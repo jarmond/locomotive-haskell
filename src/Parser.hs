@@ -193,10 +193,10 @@ parseCommaSep = do
 parseHyphenSep :: Parser Statement
 parseHyphenSep = do
   cmd <- try (symbol "DELETE" <|> symbol "LIST")
-  left <- parseExpr
+  left <- integer
   symbol "-"
-  right <- parseExpr
-  return $ Command cmd [left,right]
+  right <- integer
+  return $ Command cmd (map (ArithExpr . Int) [left,right])
 
 parseDim :: Parser Statement
 parseDim = undefined
@@ -239,8 +239,8 @@ parseStatement :: Parser Statement
 parseStatement = parseFor <|>
                  -- parseDim <|>
                  -- parseIf <|>
-                 parseAssignment <|>
                  parseHyphenSep <|>
+                 parseAssignment <|>
                  parseCommaSep <?> "statement"
 
 parseLine :: Parser CommandLine
