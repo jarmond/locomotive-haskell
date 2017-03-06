@@ -1,5 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module Error where
+module Loco.Error where
 
 import Control.Monad.Except
 

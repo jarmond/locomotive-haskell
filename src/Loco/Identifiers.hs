@@ -1,4 +1,4 @@
-module Identifiers where
+module Loco.Identifiers where
 
 reservedIdentifiers = commaSepIdentifiers ++
                       hyphenSepIdentifiers ++

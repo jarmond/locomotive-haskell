@@ -1,5 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module Lexer where
+module Loco.Lexer where
 
 import Control.Monad (void)
 import Control.Applicative (empty)
@@ -8,7 +8,7 @@ import Text.Megaparsec
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
 
-import Identifiers
+import Loco.Identifiers
 
 -- | Space consumer
 sc :: Parser ()

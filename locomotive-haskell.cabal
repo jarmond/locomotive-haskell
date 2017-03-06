@@ -15,9 +15,12 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Parser
-                     , Lexer
-                     , Identifiers
+  exposed-modules:     Loco.Parser
+                     , Loco.Lexer
+                     , Loco.Identifiers
+                     , Loco.AST
+                     , Loco.Eval
+                     , Loco.Error
   build-depends:       base >= 4.7 && < 5
                      , mtl >= 2.2.1
                      , megaparsec

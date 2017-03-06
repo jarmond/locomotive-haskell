@@ -1,8 +1,8 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module Eval where
+module Loco.Eval where
 
-import Error
-import Parser
+import Loco.Error
+import Loco.Parser
 
 type Program = [CommandLine]
 

@@ -1,5 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module Parser
+module Loco.Parser
   ( runParseLine
   , runParseStatement
   , Type(..)
@@ -16,9 +16,9 @@ module Parser
 
 -- TODO convert to Text
 
-import Error
-import AST
-import Lexer
+import Loco.Error
+import Loco.AST
+import Loco.Lexer
 
 import Control.Monad
 import Control.Monad.Identity (Identity)

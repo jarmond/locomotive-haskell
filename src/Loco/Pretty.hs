@@ -1,5 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module Pretty where
+module Loco.Pretty where
 
 import Parser
 import Identifiers

@@ -1,5 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module AST where
+module Loco.AST where
 
 -- |Abstract syntax for values.
 data LocoValue = Int Integer
