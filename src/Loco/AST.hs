@@ -1,6 +1,10 @@
 -- Copyright (C) 2017 Jonathan W. Armond
 module Loco.AST where
 
+-- |Data types
+data LocoType = LInt | LReal | LString
+              deriving (Show,Eq)
+
 -- |Abstract syntax for values.
 data LocoValue = Int Integer
                | Real Double
@@ -10,7 +14,7 @@ data LocoValue = Int Integer
 -- |Abstract syntax for expressions (for assignments).
 -- StrCmd is for string processing commands where the command name is followed by $
 data LocoExpr = Value LocoValue
-              | Variable String LocoValue
+              | Variable String LocoType
               | StrCmd String [LocoExpr]
               | Neg LocoExpr
               | ArithBinary ABinOp LocoExpr LocoExpr
