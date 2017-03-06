@@ -1,6 +1,7 @@
 -- Copyright (C) 2017 Jonathan W. Armond
 module Parser
   ( runParseLine
+  , runParseStatement
   , Type(..)
   , Variable(..)
   , BExpr(..)
@@ -15,6 +16,8 @@ module Parser
 
 -- TODO convert to Text
 
+import Error
+import AST
 import Lexer
 
 import Control.Monad
@@ -24,66 +27,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Expr
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
-
-
-data Type = TReal | TInt | TString
-  deriving (Show,Eq)
-
--- |Abstract syntax for variables.
-data Variable = Variable Name Type
-  deriving (Show,Eq)
-
-type Name = String
--- |Abstract syntax for boolean expressions.
-data BExpr = Not BExpr
-           | BBinary BBinOp BExpr BExpr
-           | RBinary RelOp AExpr AExpr
-           | ABool AExpr -- Arithmetic expression can eval to bool
-              deriving (Show,Eq)
-
-data BBinOp = And | Or | Xor
-                  deriving (Show,Eq)
-data RelOp = Greater | Less | GreaterEq | LessEq | Equal | NotEqual
-           deriving (Show,Eq)
-
-data ABinOp = Add | Subtract | Multiply | Divide | Mod
-                deriving (Show,Eq)
-
--- | Abstract syntax for arithmetic expressions.
-data AExpr = Var Variable
-          | Int Integer
-          | Real Double
-          | Neg AExpr
-          | ABinary ABinOp AExpr AExpr
-          deriving (Show,Eq)
-
--- |Abstract syntax for expressions (for assignments).
--- StrCmd is for string processing commands where the command name is followed by $
-data Expr = String String
-          | StrCmd String [Expr]
-          | ArithExpr AExpr
-          deriving (Show,Eq)
-
--- |Abstract syntax for commands.
---
---  Locomotive BASIC commands come in a plethora of lexical formats. This is all
---  dealt with in parsing and constructors are for retaining the information for
---  printing.
-
-data Statement = Command String [Expr]
-               | Dim Variable [Expr]
-               | For Variable [Expr]
-               | If BExpr Statement Statement
-               | While BExpr
-               | Assign Variable Expr
-               | Empty
-               deriving (Show,Eq)
-
--- Program structure
-type LineNumber = Integer
-type Program = [CommandLine]
-data CommandLine = CommandLine LineNumber Statement
-  deriving (Show,Eq)
 
 -- Parser
 
@@ -250,9 +193,13 @@ parseLine = do
   return $ CommandLine lineNum cmd
 
 
-type ParserError = ParseError (Token String) Dec
+--type ParserError = ParseError (Token String) Dec
 
-runParse :: Parser a -> String -> Either String a
-runParse rule text = left parseErrorPretty $ parse rule "(source)" text
+runParse :: Parser a -> String -> LocoEval a
+runParse rule text = left (ParserError . parseErrorPretty) $ parse rule "(source)" text
+-- runParse rule text = case parse rule "(source)" text of
+--   Left err -> return $ ParserError $ parseErrorPretty err
+--   Right result -> return $ result
 
 runParseLine = runParse parseLine
+runParseStatement = runParse parseStatement
