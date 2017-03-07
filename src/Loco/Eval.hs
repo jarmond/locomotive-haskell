@@ -8,13 +8,24 @@ import Data.IORef
 import Control.Exception (throw)
 import Control.Monad
 
-type Program = [CommandLine]
-
-type Store = IORef [(String, IORef LocoValue)]
 
 -- |Evaluate a command line and update store and program.
+  -- TODO Take Store
 evalLine :: CommandLine -> LocoEval LocoValue
-evalLine = undefined
+evalLine (CommandLine linum st) = evalSt st
+
+evalSt :: Statement -> LocoEval LocoValue
+evalSt (Command cmd args) = undefined
+evalSt (Dim (Variable name t) args) = undefined
+evalSt (Dim _ _) = throw $ TypeError "expected variable for DIM"
+evalSt (For (Variable name t) from to step) = undefined
+evalSt (For _ _ _ _) = throw $ TypeError "expected variable for FOR"
+evalSt (If expr@(BoolBinary _ _ _) thenSt elseSt) = undefined
+evalSt (If _ _ _) = throw $ TypeError "expected boolean expression for IF"
+evalSt (While expr@(BoolBinary _ _ _)) = undefined
+evalSt (While _) = throw $ TypeError "expected boolean expression for WHILE"
+evalSt (Assign (Variable name t) expr) = undefined
+evalSt (Assign _ _) = throw $ TypeError "expected variable for assignment"
 
 -- |Evaluate an expression.
 eval :: LocoExpr -> LocoEval LocoValue
