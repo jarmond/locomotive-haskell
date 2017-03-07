@@ -2,46 +2,48 @@
 module Loco.Eval where
 
 import Loco.Error
-import Loco.Parser
+import Loco.AST
+
+import Data.IORef
+import Control.Exception (throw)
+import Control.Monad
 
 type Program = [CommandLine]
 
-type Store = IORef [(String, IORef Expr)]
+type Store = IORef [(String, IORef LocoValue)]
 
 -- |Evaluate a command line and update store and program.
-evalLine :: CommandLine -> LocoEval Expr
+evalLine :: CommandLine -> LocoEval LocoValue
+evalLine = undefined
 
 -- |Evaluate an expression.
-eval :: Expr -> LocoEval Expr
-eval e@(String _)  = return e
-eval (ArithExpr e) = liftM ArithExpr $ aeval e
+eval :: LocoExpr -> LocoEval LocoValue
+eval (Value val)  = return val
+eval (ArithBinary op a b) = aeval op a b
 
-aeval :: AExpr -> LocoEval AExpr
---aeval e@(Var _)  = return e Look up in store 
-aeval e@(Int _)  = return e
-aeval e@(Real _) = return e
-aeval (ABinary Add a b)      = join $ locoAdd <$> (aeval a) <*> (aeval b)
-aeval (ABinary Subtract a b) = join $ locoSub <$> (aeval a) <*> (aeval b)
-aeval (ABinary Multiply a b) = join $ locoMul <$> (aeval a) <*> (aeval b)
-aeval (ABinary Divide a b)   = join $ locoDiv <$> (aeval a) <*> (aeval b)
+aeval :: ABinOp -> LocoExpr -> LocoExpr -> LocoEval LocoValue
+aeval Add a b      = join $ locoAdd <$> (eval a) <*> (eval b)
+aeval Subtract a b = join $ locoSub <$> (eval a) <*> (eval b)
+aeval Multiply a b = join $ locoMul <$> (eval a) <*> (eval b)
+aeval Divide a b   = join $ locoDiv <$> (eval a) <*> (eval b)
 
-locoAdd :: AExpr -> AExpr -> LocoEval AExpr
+locoAdd :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoAdd (Int a) (Int b) = return $ Int (a + b)
 locoAdd (Real a) (Real b) = return $ Real (a + b)
-locoAdd a b = throwError $ TypeError "incompatible types" [ArithExpr a,ArithExpr b]
+locoAdd a b = throw $ TypeError (show a ++ " " ++ show b)
 
-locoSub :: AExpr -> AExpr -> LocoEval AExpr
+locoSub :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoSub (Int a) (Int b) = return $ Int (a - b)
 locoSub (Real a) (Real b) = return $ Real (a - b)
-locoSub a b = throwError $ TypeError "incompatible types" [ArithExpr a,ArithExpr b]
+locoSub a b = throw $ TypeError (show a ++ " " ++ show b)
 
-locoMul :: AExpr -> AExpr -> LocoEval AExpr
+locoMul :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoMul (Int a) (Int b) = return $ Int (a * b)
 locoMul (Real a) (Real b) = return $ Real (a * b)
-locoMul a b = throwError $ TypeError "incompatible types" [ArithExpr a,ArithExpr b]
+locoMul a b = throw $ TypeError (show a ++ " " ++ show b)
 
-locoDiv :: AExpr -> AExpr -> LocoEval AExpr
+locoDiv :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoDiv (Int a) (Int b) = return $ Int (a `div` b)
 locoDiv (Real a) (Real b) = return $ Real (a / b)
-locoDiv a b = throwError $ TypeError "incompatible types" [ArithExpr a,ArithExpr b]
+locoDiv a b = throw $ TypeError (show a ++ " " ++ show b)
 

@@ -2,16 +2,6 @@
 module Loco.Parser
   ( runParseLine
   , runParseStatement
-  , Type(..)
-  , Variable(..)
-  , BExpr(..)
-  , BBinOp(..)
-  , RelOp(..)
-  , AExpr(..)
-  , ABinOp(..)
-  , Expr(..)
-  , Statement(..)
-  , CommandLine(..)
   ) where
 
 -- TODO convert to Text
@@ -21,7 +11,6 @@ import Loco.AST
 import Loco.Lexer
 
 import Control.Monad
-import Control.Monad.Identity (Identity)
 import Control.Arrow (left)
 import Text.Megaparsec
 import Text.Megaparsec.Expr
@@ -30,60 +19,63 @@ import qualified Text.Megaparsec.Lexer as L
 
 -- Parser
 
-varTypes = "!%$"
-
-varType :: Maybe Char -> Type
-varType = maybe TReal $ \c -> case c of
-                                '!' -> TReal
-                                '%' -> TInt
-                                '$' -> TString
-
-parseType :: Parser Type
-parseType = lexeme $ optional (oneOf varTypes) >>= return . varType 
-
--- |Variables in Locomotive BASIC consist of letters followed directly by an
--- optional type declaration.
-parseVariable :: Parser Variable
-parseVariable = do
-  n <- try identifier
-  t <- parseType
-  return $ Variable n t
-
-parseVar = parseVariable >>= return . Var
+-- Parsing values
 
 -- |Strings are delimited by ".
-parseString :: Parser Expr
+parseString :: Parser LocoValue
 parseString = do
   try $ char '"'
   s <- manyTill anyChar (try (symbol "\""))
   return $ String s
 
-parseStrCmd :: Parser Expr
+
+-- Parsing expressions
+
+varTypes = "!%$"
+
+varType :: Maybe Char -> LocoType
+varType = maybe LReal $ \c -> case c of
+                                '!' -> LReal
+                                '%' -> LInt
+                                '$' -> LString
+
+parseType :: Parser LocoType
+parseType = lexeme $ optional (oneOf varTypes) >>= return . varType 
+
+-- |Variables in Locomotive BASIC consist of letters followed directly by an
+-- optional type declaration.
+parseVariable :: Parser LocoExpr
+parseVariable = do
+  n <- try identifier
+  t <- parseType
+  return $ Variable n t
+
+parseStrCmd :: Parser LocoExpr
 parseStrCmd = do
   cmd <- try $ (symbol "STR" <|> symbol "CHR") <* symbol "$"
   args <- parseArgs
   return $ StrCmd cmd args
 
-parseBExpr :: Parser BExpr
+parseBExpr :: Parser LocoExpr
 parseBExpr = makeExprParser bTerm bOperators
 
-bOperators :: [[Operator Parser BExpr]]
+bOperators :: [[Operator Parser LocoExpr]]
 bOperators =
   [ [Prefix (Not <$ reserved "NOT")]
-  , [InfixL (BBinary And <$ reserved "AND")
-    ,InfixL (BBinary Or  <$ reserved "OR")
-    ,InfixL (BBinary Xor <$ reserved "XOR")]]
+  , [InfixL (BoolBinary And <$ reserved "AND")
+    ,InfixL (BoolBinary Or  <$ reserved "OR")
+    ,InfixL (BoolBinary Xor <$ reserved "XOR")]]
 
-bTerm :: Parser BExpr
-bTerm = parens parseBExpr <|> (liftM ABool) parseAExpr <|> parseRExpr
+bTerm :: Parser LocoExpr
+bTerm = parens parseBExpr <|> parens parseAExpr <|> parseRExpr
 
 -- | Parser for boolean relations expressions.
-parseRExpr :: Parser BExpr
+parseRExpr :: Parser LocoExpr
 parseRExpr = do
       left <- parseAExpr
       op <- relation
       right <- parseAExpr
-      return $ RBinary op left right
+      return $ RelBinary op left right
 
 relation :: Parser RelOp
 relation = (symbol ">" *> pure Greater)
@@ -93,28 +85,28 @@ relation = (symbol ">" *> pure Greater)
            <|> (symbol "=" *> pure Equal)
            <|> (symbol "<>" *> pure NotEqual)
 
-parseAExpr :: Parser AExpr
+parseAExpr :: Parser LocoExpr
 parseAExpr = makeExprParser aTerm aOperators
 
-aOperators :: [[Operator Parser AExpr]]
+aOperators :: [[Operator Parser LocoExpr]]
 aOperators =
  [ [Prefix (Neg <$ symbol "-")]
-  , [InfixL (ABinary Multiply <$ symbol "*")
-  ,  InfixL (ABinary Divide   <$ symbol "/")]
-  , [InfixL (ABinary Add      <$ symbol "+")
-  ,  InfixL (ABinary Subtract <$ symbol "-")]]
+  , [InfixL (ArithBinary Multiply <$ symbol "*")
+  ,  InfixL (ArithBinary Divide   <$ symbol "/")]
+  , [InfixL (ArithBinary Add      <$ symbol "+")
+  ,  InfixL (ArithBinary Subtract <$ symbol "-")]]
 
-aTerm :: Parser AExpr
+aTerm :: Parser LocoExpr
 aTerm = parens parseAExpr
-  <|> Var   <$> parseVariable
-  <|> Int   <$> try integer
-  <|> Real  <$> real
+  <|> parseVariable
+  <|> (Value . Int)   <$> try integer
+  <|> (Value . Real)  <$> real
 
-parseExpr :: Parser Expr
-parseExpr = parseString <|> parseStrCmd <|> (liftM ArithExpr) parseAExpr
+parseExpr :: Parser LocoExpr
+parseExpr = (liftM Value) parseString <|> parseStrCmd <|> parseAExpr
 
 -- |Parse an argument list.
-parseArgs :: Parser [Expr]
+parseArgs :: Parser [LocoExpr]
 parseArgs = parseExpr `sepBy` (symbol ",")
 
 -- Parsing statements:
@@ -139,7 +131,7 @@ parseHyphenSep = do
   left <- integer
   symbol "-"
   right <- integer
-  return $ Command cmd (map (ArithExpr . Int) [left,right])
+  return $ Command cmd (map (Value . Int) [left,right])
 
 parseDim :: Parser Statement
 parseDim = undefined
@@ -163,21 +155,6 @@ parseAssignment = do
   return $ Assign var expr
 
 
--- |Parse a statement. Handle special cases first since it is easy to match on the string. Comma-separated arguments is the least identifiable
--- command so has to come last in the combinator.
--- parseStatement :: Parser Statement
--- parseStatement = parseFor <|> parseHyphenSep <|> do
---   -- Resolve between command and assignment.
---   optional (symbol "LET") -- LET is optional for assignment and ignored.
---   ident <- identifier
---   -- If not a variable assignment for sure, try to parse a command statement.
---   (notFollowedBy (oneOf "$!%") >> spaces >> parseCommaSep ident)
---   -- If there is a space and another identifier, is a multiword command.
---     <|> (some (some spaces >> some letter) >>=
---          \idlist -> parseCommaSep $ intercalate " " (ident:idlist))
---   -- Else it must be an assignment.
---     <|> parseAssignment ident
-
 parseStatement :: Parser Statement
 parseStatement = parseFor <|>
                  -- parseDim <|>
@@ -193,13 +170,8 @@ parseLine = do
   return $ CommandLine lineNum cmd
 
 
---type ParserError = ParseError (Token String) Dec
-
 runParse :: Parser a -> String -> LocoEval a
 runParse rule text = left (ParserError . parseErrorPretty) $ parse rule "(source)" text
--- runParse rule text = case parse rule "(source)" text of
---   Left err -> return $ ParserError $ parseErrorPretty err
---   Right result -> return $ result
 
 runParseLine = runParse parseLine
 runParseStatement = runParse parseStatement
