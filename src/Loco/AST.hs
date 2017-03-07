@@ -18,18 +18,13 @@ data LocoExpr = Value LocoValue
               | StrCmd String [LocoExpr]
               | Neg LocoExpr
               | ArithBinary ABinOp LocoExpr LocoExpr
-              | RelBinary RelOp LocoExpr LocoExpr
               | Not LocoExpr
               | BoolBinary BBinOp LocoExpr LocoExpr
               deriving (Show,Eq)
 
 -- |Binary boolean logic operation.
-data BBinOp = And | Or | Xor
+data BBinOp = And | Or | Xor | Greater | Less | GreaterEq | LessEq | Equal | NotEqual
                   deriving (Show,Eq)
-
--- |Relation logic operation.
-data RelOp = Greater | Less | GreaterEq | LessEq | Equal | NotEqual
-           deriving (Show,Eq)
 
 -- |Binary arithmetic operation.
 data ABinOp = Add | Subtract | Multiply | Divide | Mod

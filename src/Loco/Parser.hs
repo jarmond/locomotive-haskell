@@ -62,28 +62,18 @@ parseBExpr = makeExprParser bTerm bOperators
 bOperators :: [[Operator Parser LocoExpr]]
 bOperators =
   [ [Prefix (Not <$ reserved "NOT")]
-  , [InfixL (BoolBinary And <$ reserved "AND")
-    ,InfixL (BoolBinary Or  <$ reserved "OR")
-    ,InfixL (BoolBinary Xor <$ reserved "XOR")]]
+  , [InfixL (BoolBinary And       <$ reserved "AND")
+    ,InfixL (BoolBinary Or        <$ reserved "OR")
+    ,InfixL (BoolBinary Xor       <$ reserved "XOR")
+    ,InfixL (BoolBinary Greater   <$ reserved ">")
+    ,InfixL (BoolBinary Less      <$ reserved "<")
+    ,InfixL (BoolBinary GreaterEq <$ reserved ">=")
+    ,InfixL (BoolBinary LessEq    <$ reserved "<=")
+    ,InfixL (BoolBinary Equal     <$ reserved "=")
+    ,InfixL (BoolBinary NotEqual  <$ reserved "<>")]]
 
 bTerm :: Parser LocoExpr
-bTerm = parens parseBExpr <|> parens parseAExpr <|> parseRExpr
-
--- | Parser for boolean relations expressions.
-parseRExpr :: Parser LocoExpr
-parseRExpr = do
-      left <- parseAExpr
-      op <- relation
-      right <- parseAExpr
-      return $ RelBinary op left right
-
-relation :: Parser RelOp
-relation = (symbol ">" *> pure Greater)
-           <|> (symbol "<" *> pure Less)
-           <|> (symbol ">=" *> pure GreaterEq)
-           <|> (symbol "<=" *> pure LessEq)
-           <|> (symbol "=" *> pure Equal)
-           <|> (symbol "<>" *> pure NotEqual)
+bTerm = parens parseBExpr <|> parens parseAExpr
 
 parseAExpr :: Parser LocoExpr
 parseAExpr = makeExprParser aTerm aOperators
