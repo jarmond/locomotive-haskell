@@ -25,3 +25,7 @@ runIOEval action = runExceptT (trapError action) >>= return . extractValue
 
 extractValue :: LocoEval a -> a
 extractValue (Right val) = val
+
+liftIOEval :: LocoEval a -> IOLocoEval a
+liftIOEval (Left err) = throwError err
+liftIOEval (Right val) = return val
