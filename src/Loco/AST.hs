@@ -39,11 +39,10 @@ data ABinOp = Add | Subtract | Multiply | Divide | Mod
 -- of lexical formats.
 data Statement = Command String [LocoExpr]
                | Dim LocoExpr [LocoExpr]
-               | For LocoExpr [LocoExpr]
+               | For LocoExpr LocoExpr LocoExpr (Maybe LocoExpr)
                | If LocoExpr Statement Statement
                | While LocoExpr
                | Assign LocoExpr LocoExpr
-               | Empty
                deriving (Show,Eq)
 
 -- Program structure

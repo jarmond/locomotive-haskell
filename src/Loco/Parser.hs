@@ -145,7 +145,7 @@ parseFor = do
   reserved "TO"
   end <- parseExpr
   -- TODO optional STEP
-  return $ For var [begin,end]
+  return $ For var begin end Nothing
 
 parseAssignment :: Parser Statement
 parseAssignment = do
