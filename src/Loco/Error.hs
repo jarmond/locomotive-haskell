@@ -1,7 +1,7 @@
 -- Copyright (C) 2017 Jonathan W. Armond
 module Loco.Error where
 
-import Control.Monad.Except
+import Control.Exception hiding (TypeError)
 
 type LocoEval  = Either LocoError
 data LocoError = ArgError Int Int
@@ -9,9 +9,7 @@ data LocoError = ArgError Int Int
                | ParserError String
                | UnknownError String
 instance Show LocoError where show = showError
-instance Error LocoError where
-  noMsg = UnknownError "unknown error"
-  strMsg = UnknownError
+instance Exception LocoError
 
 showError :: LocoError -> String
 showError (ArgError n m) = "expected " ++ show n ++ " args but found " ++ show m
