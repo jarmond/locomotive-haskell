@@ -1,4 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
+{-# LANGUAGE RankNTypes #-}
 module Loco.Eval where
 
 import Loco.Error
@@ -8,6 +9,7 @@ import Data.IORef
 import Control.Monad.Except (throwError)
 import Control.Monad
 
+-- Have a choice to think of functions as values and imbue the store with built-ins. Or lookup commands from a list. Probably first is best, since is unifies with user-defined functions.
 
 -- |Evaluate a command line and update store and program.
   -- TODO Take Store
@@ -33,25 +35,15 @@ eval (Value val)  = return val
 eval (ArithBinary op a b) = aeval op a b
 
 aeval :: ABinOp -> LocoExpr -> LocoExpr -> LocoEval LocoValue
-aeval Add a b      = join $ locoAdd <$> (eval a) <*> (eval b)
-aeval Subtract a b = join $ locoSub <$> (eval a) <*> (eval b)
-aeval Multiply a b = join $ locoMul <$> (eval a) <*> (eval b)
+aeval Add a b      = join $ locoOp (+) <$> (eval a) <*> (eval b)
+aeval Subtract a b = join $ locoOp (-) <$> (eval a) <*> (eval b)
+aeval Multiply a b = join $ locoOp (*) <$> (eval a) <*> (eval b)
 aeval Divide a b   = join $ locoDiv <$> (eval a) <*> (eval b)
 
-locoAdd :: LocoValue -> LocoValue -> LocoEval LocoValue
-locoAdd (Int a) (Int b) = return $ Int (a + b)
-locoAdd (Real a) (Real b) = return $ Real (a + b)
-locoAdd a b = throwError $ TypeError (show a ++ " " ++ show b)
-
-locoSub :: LocoValue -> LocoValue -> LocoEval LocoValue
-locoSub (Int a) (Int b) = return $ Int (a - b)
-locoSub (Real a) (Real b) = return $ Real (a - b)
-locoSub a b = throwError $ TypeError (show a ++ " " ++ show b)
-
-locoMul :: LocoValue -> LocoValue -> LocoEval LocoValue
-locoMul (Int a) (Int b) = return $ Int (a * b)
-locoMul (Real a) (Real b) = return $ Real (a * b)
-locoMul a b = throwError $ TypeError (show a ++ " " ++ show b)
+locoOp :: (forall a. Num a => a -> a -> a) -> LocoValue -> LocoValue -> LocoEval LocoValue
+locoOp op (Int a) (Int b) = return $ Int (a `op` b)
+locoOp op (Real a) (Real b) = return $ Real (a `op` b)
+locoOp _ a b = throwError $ TypeError (show a ++ " " ++ show b)
 
 locoDiv :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoDiv (Int a) (Int b) = return $ Int (a `div` b)
