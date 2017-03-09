@@ -9,6 +9,7 @@ data LocoType = LInt | LReal | LString
 data LocoValue = Int Integer
                | Real Double
                | String String
+               | Func String LocoExpr
                deriving (Show,Eq)
 
 -- |Abstract syntax for expressions (for assignments).
@@ -37,7 +38,7 @@ data Statement = Command String [LocoExpr]
                | For LocoExpr LocoExpr LocoExpr (Maybe LocoExpr)
                | If LocoExpr Statement Statement
                | While LocoExpr
-               | Assign LocoExpr LocoExpr
+               | Assign LocoExpr LocoExpr -- TODO multiple :-separated assignment
                deriving (Show,Eq)
 
 -- Program structure
