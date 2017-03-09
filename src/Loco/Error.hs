@@ -7,6 +7,7 @@ type LocoEval  = Either LocoError
 data LocoError = ArgError Int Int
                | TypeError String
                | ParserError String
+               | UndeclaredVarError String
                | UnknownError String
 instance Show LocoError where show = showError
 
@@ -14,6 +15,7 @@ showError :: LocoError -> String
 showError (ArgError n m) = "expected " ++ show n ++ " args but found " ++ show m
 showError (TypeError msg) = "invalid types: " ++ msg
 showError (ParserError msg) = "parse error: " ++ msg
+showError (UndeclaredVarError msg) = "undeclared variable: " ++ msg
 showError (UnknownError msg) = msg
 
 type IOLocoEval = ExceptT LocoError IO
