@@ -1,8 +1,10 @@
 -- Copyright (C) 2017 Jonathan W. Armond
 module Main where
 
-import Parser
-import Eval
+import Loco.AST
+import Loco.Parser
+import Loco.Error
+import Loco.Eval
 
 import System.IO
 import System.Environment (getArgs)
