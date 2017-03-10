@@ -28,9 +28,10 @@ evalSt _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF
 evalSt _ (While expr@(BoolBinary _ _ _)) = undefined
 evalSt _ (While _) = throwError $ TypeError "expected boolean expression for WHILE"
 evalSt st (Assign var@(Variable _ _) expr) =
-  (liftIOEval $ eval expr) >>= assign st var >> return Nothing
+  eval st expr >>= assign st var >> return Nothing
 evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
 
+-- command :: String -> [LocoExpr]
 
 -- while :: Store -> LineNumber
 
@@ -38,15 +39,23 @@ assign :: Store -> LocoExpr -> LocoValue -> IOLocoEval ()
 assign st (Variable name LInt) val@(Int _) = liftIO $ setVar st name val >> return ()
 
 -- |Evaluate an expression.
-eval :: LocoExpr -> LocoEval LocoValue
-eval (Value val)  = return val
-eval (ArithBinary op a b) = aeval op a b
+eval :: Store -> LocoExpr -> IOLocoEval LocoValue
+eval _  (Value val)          = return val
+eval st (Variable name t)    = getVar st name
+eval st (ArithBinary op a b) = aeval st op a b
 
-aeval :: ABinOp -> LocoExpr -> LocoExpr -> LocoEval LocoValue
-aeval Add a b      = join $ locoOp (+) <$> (eval a) <*> (eval b)
-aeval Subtract a b = join $ locoOp (-) <$> (eval a) <*> (eval b)
-aeval Multiply a b = join $ locoOp (*) <$> (eval a) <*> (eval b)
-aeval Divide a b   = join $ locoDiv <$> (eval a) <*> (eval b)
+aeval :: Store -> ABinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue
+aeval st Add a b      = liftBinOp extractValue (locoOp (+)) (eval st a) (eval st b)
+aeval st Subtract a b = liftBinOp extractValue (locoOp (-)) (eval st a) (eval st b)
+aeval st Multiply a b = liftBinOp extractValue (locoOp (*)) (eval st a) (eval st b)
+aeval st Divide a b   = liftBinOp extractValue locoDiv (eval st a) (eval st b)
+
+-- |Lifts a binary function f into monad n, given an unpacker u for m c.
+liftBinOp :: (Monad m, Monad n) => (m c -> c) -> (a -> b -> m c) -> n a -> n b -> n c
+liftBinOp u f na nb = do
+  a <- na
+  b <- nb
+  return $ u $ f a b
 
 locoOp :: (forall a. Num a => a -> a -> a) -> LocoValue -> LocoValue -> LocoEval LocoValue
 locoOp op (Int a) (Int b) = return $ Int (a `op` b)
