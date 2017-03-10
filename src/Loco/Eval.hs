@@ -4,30 +4,38 @@ module Loco.Eval where
 
 import Loco.Error
 import Loco.AST
+import Loco.Store
 
 import Data.IORef
-import Control.Monad.Except (throwError)
+import Control.Monad.Except
 import Control.Monad
 
--- Have a choice to think of functions as values and imbue the store with built-ins. Or lookup commands from a list. Probably first is best, since is unifies with user-defined functions.
+type Jump = Maybe LineNumber
 
--- |Evaluate a command line and update store and program.
-  -- TODO Take Store
-evalLine :: CommandLine -> LocoEval LocoValue
-evalLine (CommandLine linum st) = evalSt st
+-- |Same as evalSt, but discards any jump.
+evalSt1 :: Store -> Statement -> IOLocoEval ()
+evalSt1 st stmt = evalSt st stmt >> return ()
 
-evalSt :: Statement -> LocoEval LocoValue
-evalSt (Command cmd args) = undefined
-evalSt (Dim (Variable name t) args) = undefined
-evalSt (Dim _ _) = throwError $ TypeError "expected variable for DIM"
-evalSt (For (Variable name t) from to step) = undefined
-evalSt (For _ _ _ _) = throwError $ TypeError "expected variable for FOR"
-evalSt (If expr@(BoolBinary _ _ _) thenSt elseSt) = undefined
-evalSt (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
-evalSt (While expr@(BoolBinary _ _ _)) = undefined
-evalSt (While _) = throwError $ TypeError "expected boolean expression for WHILE"
-evalSt (Assign (Variable name t) expr) = undefined
-evalSt (Assign _ _) = throwError $ TypeError "expected variable for assignment"
+-- |Evaluates (executes) a single statement and maybe returns a line number to jump to.
+evalSt :: Store -> Statement -> IOLocoEval Jump
+evalSt _ (Command cmd args) = undefined
+evalSt _ (Dim (Variable name t) args) = undefined
+evalSt _ (Dim _ _) = throwError $ TypeError "expected variable for DIM"
+evalSt _ (For (Variable name t) from to step) = undefined
+evalSt _ (For _ _ _ _) = throwError $ TypeError "expected variable for FOR"
+evalSt _ (If expr@(BoolBinary _ _ _) thenSt elseSt) = undefined
+evalSt _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
+evalSt _ (While expr@(BoolBinary _ _ _)) = undefined
+evalSt _ (While _) = throwError $ TypeError "expected boolean expression for WHILE"
+evalSt st (Assign var@(Variable _ _) expr) =
+  (liftIOEval $ eval expr) >>= assign st var >> return Nothing
+evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
+
+
+-- while :: Store -> LineNumber
+
+assign :: Store -> LocoExpr -> LocoValue -> IOLocoEval ()
+assign st (Variable name LInt) val@(Int _) = liftIO $ setVar st name val >> return ()
 
 -- |Evaluate an expression.
 eval :: LocoExpr -> LocoEval LocoValue

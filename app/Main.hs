@@ -27,5 +27,8 @@ readPrompt prompt = putStr prompt >> hFlush stdout >> getLine
 readLine :: String -> LocoEval CommandLine
 readLine = runParseLine
 
+readStatement :: String -> LocoEval Statement
+readStatement = runParseStatement
+
 repl :: IO ()
-repl = forever $ readPrompt >>= readLine >>= eval
+repl = forever $ readPrompt >>= readStatement >>= eval
