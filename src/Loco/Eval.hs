@@ -18,7 +18,7 @@ evalSt1 st stmt = evalSt st stmt >> return ()
 
 -- |Evaluates (executes) a single statement and maybe returns a line number to jump to.
 evalSt :: Store -> Statement -> IOLocoEval Jump
-evalSt _ (Command cmd args) = undefined
+evalSt st (Command cmd args) = mapM (eval st) args >>= command cmd
 evalSt _ (Dim (Variable name t) args) = undefined
 evalSt _ (Dim _ _) = throwError $ TypeError "expected variable for DIM"
 evalSt _ (For (Variable name t) from to step) = undefined
@@ -31,7 +31,8 @@ evalSt st (Assign var@(Variable _ _) expr) =
   eval st expr >>= assign st var >> return Nothing
 evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
 
--- command :: String -> [LocoExpr]
+command :: String -> [LocoValue] -> IOLocoEval Jump
+command "PRINT" (arg:_) = liftIO $ (putStrLn . show) arg >> return Nothing
 
 -- while :: Store -> LineNumber
 

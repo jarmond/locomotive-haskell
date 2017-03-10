@@ -22,11 +22,8 @@ showError (UnknownError msg) = msg
 
 type IOLocoEval = ExceptT LocoError IO
 
-trapError :: IOLocoEval a -> IO ()
-trapError action = do
-  result <- runExceptT action
-  case result of
-    Left errMsg -> putStrLn $ show errMsg
+trapError :: IOLocoEval () -> IO ()
+trapError action = do { runIOEval $ action } `catchError` (putStrLn . show)
 
 runIOEval :: IOLocoEval a -> IO a
 runIOEval action = runExceptT action >>= return . extractValue
