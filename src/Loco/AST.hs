@@ -28,7 +28,7 @@ data BBinOp = And | Or | Xor | Greater | Less | GreaterEq | LessEq | Equal | Not
                   deriving (Show,Eq)
 
 -- |Binary arithmetic operation.
-data ABinOp = Add | Subtract | Multiply | Divide | Mod
+data ABinOp = Add | Subtract | Multiply | Divide | Mod | IntDiv
                 deriving (Show,Eq)
 
 -- |Abstract syntax for commands. Locomotive BASIC commands come in a plethora
