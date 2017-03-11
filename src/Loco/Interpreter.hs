@@ -19,18 +19,18 @@ execProgramNewStore prog = newStore >>= execProgram prog
 
 execProgram :: Program -> Store -> IO ()
 execProgram [] _    = return ()
-execProgram prog st = trapError $ execProg st progZip
+execProgram prog st = runIOEval $ execProg st progZip
   where progZip = fromList prog
 
 -- |Execute program. Uses a zipper to recurse down list.
 execProg :: Store -> Zipper CommandLine -> IOLocoEval ()
-execProg st progZip = liftIO $ unless (endp progZip) exec
+execProg st progZip = liftIO $ unless (endp progZip) $ runIOEval exec
   where
     exec = do
       let (CommandLine _ stmt) = cursor progZip
       -- Execute statement
-      maybeJump <- runIOEval $ evalSt st stmt
-      runIOEval $ maybe execNextLine jumpToLine maybeJump
+      maybeJump <- evalSt st stmt
+      maybe execNextLine jumpToLine maybeJump
         where
           -- Recursively execute next line.
           execNextLine :: IOLocoEval ()
@@ -51,17 +51,19 @@ zipToIndex :: Zipper a -> Int -> Zipper a
 zipToIndex z i = iterate right (start z) !! i
 
 runStatement :: String -> IO ()
-runStatement s = do
-  st <- newStore
-  stmt <- runIOEval $ liftIOEval $ runParseStatement s
-  runIOEval $ evalSt1 st stmt
+runStatement s = runIOEval $ exec
+  where exec = do
+        st <- liftIO newStore
+        stmt <- liftIOEval $ runParseStatement s
+        evalSt1 st stmt
 
 runProgram :: [String] -> IO ()
-runProgram xs = do
-  prog <- mapM (runIOEval . liftIOEval) $ map runParseLine xs
-  printProgram prog
-  prompt
-  execProgramNewStore prog
+runProgram xs = runIOEval $ exec
+  where exec = do
+          prog <- mapM (liftIOEval) $ map runParseLine xs
+          liftIO $ printProgram prog
+          liftIO $ prompt
+          liftIO $ execProgramNewStore prog
 
 printProgram :: Program -> IO ()
 printProgram prog = mapM_ (putStrLn . prettyShow) prog
