@@ -37,8 +37,9 @@ command "PRINT" (arg:_) = liftIO $ (putStrLn . prettyShow) arg >> return Nothing
 
 -- while :: Store -> LineNumber
 
+-- |Assign a variable to store. Type safety is enforced by the pattern matching.
 assign :: Store -> LocoExpr -> LocoValue -> IOLocoEval ()
-assign st (Variable name LInt) val@(Int _) = liftIO $ setVar st name val >> return ()
+assign st (Variable name _) val = setVar st name val
 
 -- |Evaluate an expression.
 eval :: Store -> LocoExpr -> IOLocoEval LocoValue

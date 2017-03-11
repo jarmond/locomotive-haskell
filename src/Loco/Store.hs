@@ -26,10 +26,22 @@ getVar storeRef name = do
         (liftIO . readIORef)
         (lookup name store)
 
-setVar :: Store -> String -> LocoValue -> IO ()
+setVar :: Store -> String -> LocoValue -> IOLocoEval ()
 setVar storeRef name val = do
   store <- liftIO $ readIORef storeRef
-  valRef <- newIORef val
+  valRef <- liftIO $ newIORef val
   case (lookup name store) of
+    -- New variable, store it.
     Nothing -> liftIO $ writeIORef storeRef ((name, valRef) : store)
-    Just curRef -> liftIO $ writeIORef curRef val
+    -- Existing variable, check types match, then store it.
+    Just curRef -> do
+      cur <- liftIO $ readIORef curRef
+      if matchedTypes cur val
+        then liftIO $ writeIORef curRef val
+        else throwError $ TypeError "in assignment"
+
+matchedTypes :: LocoValue -> LocoValue -> Bool
+matchedTypes (Int _) (Int _)       = True
+matchedTypes (Real _) (Real _)     = True
+matchedTypes (String _) (String _) = True
+matchedTypes _ _                   = False
