@@ -1,46 +1,69 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module Loco.Pretty where
+module Loco.Pretty
+  ( prettyShow
+  ) where
 
-import Parser
-import Identifiers
+import Loco.AST
+import Loco.Identifiers
 
-import Data.List (intercalate,intersperse)
+import Text.PrettyPrint
+import Text.PrettyPrint.HughesPJClass
 
 -- Pretty printing
 
-fmtVariable :: Variable -> String
-fmtVariable (Variable n t) = n ++ show t
+instance Pretty LocoType where
+  pPrint LInt    = char '%'
+  pPrint LReal   = char '!'
+  pPrint LString = char '$'
 
--- fmtExpr :: Expr -> String
--- fmtExpr (Var v)        = show v
--- fmtExpr (Int x)        = show x
--- fmtExpr (Real x)       = show x
--- fmtExpr (String s)     = "\"" ++ s ++ "\""
--- 
--- fmtExpr (BinOp op a b) =
---   parenOpen a ++ show a ++ parenClose a ++ " " ++ show op ++ " " ++ parenOpen b ++ show b ++ parenClose b
---   where parenOpen (BinOp _ _ _)  = "("
---         parenOpen _              = ""
---         parenClose (BinOp _ _ _) = ")"
-        -- parenClose _             = ""
-fmtExpr (StrCmd c args) = show c ++ "$" ++ argsCommaParen args
+instance Pretty LocoValue where
+  pPrint (Int val)        = integer val
+  pPrint (Real val)       = double val
+  pPrint (String val)     = doubleQuotes $ text val
+  pPrint (Func name expr) = text name <> pPrint expr
 
-argsComma args = intercalate "," (map show args)
-argsCommaParen args = "(" ++ argsComma args ++ ")"
+instance Pretty LocoExpr where
+  pPrint (Value val) = pPrint val
+  pPrint (Variable name t) = text name <> pPrint t
+  pPrint (StrCmd name exprs) = text name <> commaArgs exprs
+  pPrint (Neg expr) = char '-' <> pPrint expr
+  pPrint (ArithBinary op expr1 expr2) = pPrint expr1 <+> pPrint op <+> pPrint expr2
+  pPrint (Not expr) = text "NOT" <+> pPrint expr
+  pPrint (BoolBinary op expr1 expr2) = pPrint expr1 <+> pPrint op <+> pPrint expr2
 
-fmtCommand :: Statement -> String
-fmtCommand (Command c args) | isHyphenCmd c = c ++ " " ++ fmtExpr (args!!0) ++ "-" ++ fmtExpr (args!!1)
-                            | otherwise     = c ++ " " ++ argsComma args
-fmtCommand (Dim v args) =
-  "DIM " ++ show v ++ argsCommaParen args
-fmtCommand (For v args) =
-  "FOR " ++ show v ++ "=" ++ from ++ " TO " ++ to ++ opt
-  where from = show $ args !! 0
-        to   = show $ args !! 1
-        opt  = show $ if length args > 2 then " STEP " ++ (show $ args!!2) else ""
+instance Pretty ABinOp where
+  pPrint Add      = char '+'
+  pPrint Subtract = char '-'
+  pPrint Multiply = char '*'
+  pPrint Divide   = char '/'
+  pPrint Mod      = char '%'
+
+instance Pretty BBinOp where
+  pPrint And = text "AND"
+  pPrint Or = text "OR"
+  pPrint Xor = text "XOR"
+  pPrint Greater = char '>'
+  pPrint Less = char '<'
+  pPrint GreaterEq = text ">="
+  pPrint LessEq = text "<="
+  pPrint Equal = char '='
+  pPrint NotEqual = text "<>"
+
+instance Pretty Statement where
+  pPrint (Command name exprs) = text name <> commaArgs exprs
+  pPrint (Dim var exprs) = text "DIM" <+> pPrint var <> commaArgs exprs
+  pPrint (For var from to step) =
+    text "FOR" <+> pPrint var <> char '=' <> pPrint from <+> text "TO"
+    <+> pPrint to <+> maybe empty pStep step
+    where pStep stepExpr = text "STEP" <+> pPrint stepExpr
+  pPrint (If expr thenSt elseSt) =
+    text "IF" <+> pPrint expr <+> text "THEN" <+> pPrint thenSt
+    <+> text "ELSE" <+> pPrint elseSt
+  pPrint (While expr) = text "WHILE" <+> pPrint expr
+  pPrint (Assign var expr) = pPrint var <+> char '=' <+> pPrint expr
 
 
-fmtType :: Type -> String
-fmtType TReal   = "!"
-fmtType TInt    = "%"
-fmtType TString = "$"
+commaArgs exprs = parens $ hcat $ punctuate (char ',') $ map pPrint exprs
+
+instance Pretty CommandLine where
+  pPrint (CommandLine linum stmt) = integer linum <+> pPrint stmt

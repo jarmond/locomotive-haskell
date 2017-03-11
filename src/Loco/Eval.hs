@@ -5,6 +5,7 @@ module Loco.Eval where
 import Loco.Error
 import Loco.AST
 import Loco.Store
+import Loco.Pretty
 
 import Data.IORef
 import Control.Monad.Except
@@ -32,7 +33,7 @@ evalSt st (Assign var@(Variable _ _) expr) =
 evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
 
 command :: String -> [LocoValue] -> IOLocoEval Jump
-command "PRINT" (arg:_) = liftIO $ (putStrLn . show) arg >> return Nothing
+command "PRINT" (arg:_) = liftIO $ (putStrLn . prettyShow) arg >> return Nothing
 
 -- while :: Store -> LineNumber
 
