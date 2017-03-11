@@ -6,6 +6,7 @@ import Loco.Eval
 import Loco.Error
 import Loco.Store
 import Loco.AST
+import Loco.Pretty
 
 import Control.Monad
 import Control.Monad.Except
@@ -13,12 +14,12 @@ import Data.List
 import Data.List.Zipper
 
 
-runNewProgram :: Program -> IO ()
-runNewProgram prog = newStore >>= runProgram prog
+execProgramNewStore :: Program -> IO ()
+execProgramNewStore prog = newStore >>= execProgram prog
 
-runProgram :: Program -> Store -> IO ()
-runProgram [] _    = return ()
-runProgram prog st = trapError $ execProg st progZip
+execProgram :: Program -> Store -> IO ()
+execProgram [] _    = return ()
+execProgram prog st = trapError $ execProg st progZip
   where progZip = fromList prog
 
 -- |Execute program. Uses a zipper to recurse down list.
@@ -54,5 +55,16 @@ runStatement s = do
   st <- newStore
   stmt <- runIOEval $ liftIOEval $ runParseStatement s
   runIOEval $ evalSt1 st stmt
-  return ()
 
+runProgram :: [String] -> IO ()
+runProgram xs = do
+  prog <- mapM (runIOEval . liftIOEval) $ map runParseLine xs
+  printProgram prog
+  prompt
+  execProgramNewStore prog
+
+printProgram :: Program -> IO ()
+printProgram prog = mapM_ (putStrLn . prettyShow) prog
+
+prompt :: IO ()
+prompt = putStrLn "Ready"
