@@ -44,7 +44,11 @@ assign st (Variable name _) val = setVar st name val
 -- |Evaluate an expression.
 eval :: Store -> LocoExpr -> IOLocoEval LocoValue
 eval _  (Value val)          = return val
-eval st (Variable name t)    = getVar st name
+eval st var@(Variable name _) = do
+  val <- getVar st name
+  if matchedVarType var val
+    then return val
+    else throwError $ TypeError "in expression"
 eval st (ArithBinary op a b) = aeval st op a b
 
 aeval :: Store -> ABinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue

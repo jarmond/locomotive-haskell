@@ -45,3 +45,10 @@ matchedTypes (Int _) (Int _)       = True
 matchedTypes (Real _) (Real _)     = True
 matchedTypes (String _) (String _) = True
 matchedTypes _ _                   = False
+
+matchedVarType :: LocoExpr -> LocoValue -> Bool
+matchedVarType (Variable _ LInt) (Int _)       = True
+matchedVarType (Variable _ LReal) (Real _)     = True
+matchedVarType (Variable _ LString) (String _) = True
+matchedVarType (Variable _ _) _                = False
+matchedVarType _ _ = error "cannot match types for non-variable expression"
