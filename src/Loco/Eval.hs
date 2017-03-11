@@ -56,6 +56,7 @@ aeval st Add a b      = liftBinOp extractValue (locoOp (+)) (eval st a) (eval st
 aeval st Subtract a b = liftBinOp extractValue (locoOp (-)) (eval st a) (eval st b)
 aeval st Multiply a b = liftBinOp extractValue (locoOp (*)) (eval st a) (eval st b)
 aeval st Divide a b   = liftBinOp extractValue locoDiv (eval st a) (eval st b)
+aeval st IntDiv a b   = liftBinOp extractValue locoIntDiv (eval st a) (eval st b)
 
 -- |Lifts a binary function f into monad n, given an unpacker u for m c.
 liftBinOp :: (Monad m, Monad n) => (m c -> c) -> (a -> b -> m c) -> n a -> n b -> n c
@@ -74,3 +75,6 @@ locoDiv (Int a) (Int b) = return $ Int (a `div` b)
 locoDiv (Real a) (Real b) = return $ Real (a / b)
 locoDiv a b = throwError $ TypeError (show a ++ " " ++ show b)
 
+locoIntDiv :: LocoValue -> LocoValue -> LocoEval LocoValue
+locoIntDiv (Int a) (Int b) = return $ Int (a `div` b)
+locoIntDiv a b = throwError $ TypeError (show a ++ " " ++ show b)
