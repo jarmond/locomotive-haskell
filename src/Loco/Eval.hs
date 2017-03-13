@@ -28,7 +28,8 @@ evalSt _ _ (For _ _ _ _) = throwError $ TypeError "expected variable for FOR"
 evalSt st linum (If expr@(BoolBinary _ _ _) thenSt elseSt) =
   ifstmt st linum expr thenSt elseSt
 evalSt _ _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
-evalSt _ _ (While expr@(BoolBinary _ _ _)) = undefined
+evalSt st linum (While expr@(BoolBinary _ _ _)) =
+  while st linum expr
 evalSt _ _ (While _) = throwError $ TypeError "expected boolean expression for WHILE"
 evalSt st _ (Assign (Variable name _) expr) =
   eval st expr >>= assign st name >> return Nothing
