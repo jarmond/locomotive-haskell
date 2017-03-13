@@ -9,6 +9,7 @@ data LocoType = LInt | LReal | LString
 data LocoValue = Int Integer
                | Real Double
                | String String
+               | Bool Bool
                | Func String LocoExpr
                deriving (Show,Eq)
 

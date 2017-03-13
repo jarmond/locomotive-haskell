@@ -27,9 +27,9 @@ execProg :: Store -> Zipper CommandLine -> IOLocoEval ()
 execProg st progZip = liftIO $ unless (endp progZip) $ runIOEval exec
   where
     exec = do
-      let (CommandLine _ stmt) = cursor progZip
+      let (CommandLine linum stmt) = cursor progZip
       -- Execute statement
-      maybeJump <- evalSt st stmt
+      maybeJump <- evalSt st linum stmt
       maybe execNextLine jumpToLine maybeJump
         where
           -- Recursively execute next line.
