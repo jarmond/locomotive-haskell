@@ -15,6 +15,7 @@ import Control.Monad.Except
 main :: IO ()
 main = do
   args <- getArgs
+  welcome
   let filename = args !! 1
   if null args then repl else loadFile filename >>= runProgram
 
@@ -24,11 +25,8 @@ loadFile filename = readFile filename >>= return . lines
 readPrompt :: IO String
 readPrompt = prompt >> hFlush stdout >> getLine
 
-readLine :: String -> LocoEval CommandLine
-readLine = runParseLine
-
-readStatement :: String -> LocoEval Statement
-readStatement = runParseStatement
-
 repl :: IO ()
 repl = forever $ (liftIO readPrompt) >>= runStatement
+
+welcome :: IO ()
+welcome = putStrLn "Locomotive BASIC"
