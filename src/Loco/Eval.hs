@@ -37,7 +37,13 @@ evalSt _ _ (Assign _ _) = throwError $ TypeError "expected variable for assignme
 command :: String -> [LocoValue] -> IOLocoEval Jump
 command "PRINT" (arg:_) = liftIO $ (putStrLn . prettyShow) arg >> return Nothing
 
--- while :: Store -> LineNumber
+-- |Execute WHILE loop.
+while :: Store -> LineNumber -> LocoExpr -> IOLocoEval Jump
+while st linum expr = do
+  cond <- evalBool st expr
+  if cond
+    then getJump st WhileLoop linum >>= return . Just
+    else return Nothing
 
 -- |Execute FOR loop. Sets and updates a variable in store until 'to' condition
 -- is reached, when it executes a jump to line after NEXT. If condition not
