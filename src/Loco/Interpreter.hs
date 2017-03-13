@@ -1,5 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-module Interpreter where
+module Loco.Interpreter where
 
 import Loco.Parser
 import Loco.Eval

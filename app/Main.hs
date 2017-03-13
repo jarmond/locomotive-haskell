@@ -10,11 +10,16 @@ import Loco.Interpreter
 import System.IO
 import System.Environment (getArgs)
 import Control.Monad
+import Control.Monad.Except
 
 main :: IO ()
 main = do
   args <- getArgs
-  if null args then repl else runParseStatement $ args
+  let filename = args !! 1
+  if null args then repl else loadFile filename >>= runProgram
+
+loadFile :: FilePath -> IO [String]
+loadFile filename = readFile filename >>= return . lines
 
 readPrompt :: IO String
 readPrompt = prompt >> hFlush stdout >> getLine
@@ -26,4 +31,4 @@ readStatement :: String -> LocoEval Statement
 readStatement = runParseStatement
 
 repl :: IO ()
-repl = forever $ readPrompt >>= readStatement >>= eval
+repl = forever $ (liftIO readPrompt) >>= runStatement
