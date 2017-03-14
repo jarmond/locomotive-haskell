@@ -2,6 +2,7 @@
 module Loco.Parser
   ( runParseLine
   , runParseStatement
+  , parseProgram
   ) where
 
 -- TODO convert to Text
@@ -11,6 +12,7 @@ import Loco.AST
 import Loco.Lexer
 
 import Control.Monad
+import Control.Applicative
 import Control.Arrow (left)
 import Text.Megaparsec
 import Text.Megaparsec.Expr
@@ -134,9 +136,12 @@ parseFor = do
   begin <- parseExpr
   reserved "TO"
   end <- parseExpr
-  -- TODO optional STEP
+  -- Optional STEP.
   step <- try $ optional (reserved "STEP" *> parseExpr)
-  return $ For var begin end step
+  -- Look ahead to NEXT command. This indicates the jump back the start of the
+  -- loop.
+  jump <- try $ lookAhead $ parseLoop "NEXT"
+  return $ For var begin end step jump
 
 parseAssignment :: Parser Statement
 parseAssignment = do
@@ -145,6 +150,24 @@ parseAssignment = do
   expr <- parseExpr
   return $ Assign var expr
 
+-- | Loops are delimited by a jumping statement. This parser consumes lines until
+-- finding the appropriate jump, then returns the line number. It should be used
+-- within try and lookahead.
+parseLoop :: String -> Parser LineNumber
+parseLoop loop = do
+  manyTill' skipLine loopCmd
+  where
+    loopCmd = do
+      linum <- integer
+      reserved loop
+      return linum
+
+-- | @manyTill' p end@ Similar to @manyTill p end@, this returns the result of
+-- @end@ instead of @p@.
+manyTill' :: Alternative m => m a -> m end -> m end
+manyTill' p end = go where go = end <|> (p *> go)
+
+skipLine = manyTill anyChar eol
 
 parseStatement :: Parser Statement
 parseStatement = parseFor <|>
@@ -166,3 +189,6 @@ runParse rule text = left (ParserError . parseErrorPretty) $ parse rule "(source
 
 runParseLine = runParse parseLine
 runParseStatement = runParse parseStatement
+
+parseProgram :: [String] -> LocoEval Program
+parseProgram = mapM runParseLine

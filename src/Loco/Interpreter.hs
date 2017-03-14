@@ -29,7 +29,8 @@ execProg st progZip = liftIO $ unless (endp progZip) $ runIOEval exec
   where
     exec = do
       let (CommandLine linum stmt) = cursor progZip
-      -- Execute statement
+      -- Execute statement. If a jump is returned then execution should precede
+      -- on line after jump point.
       maybeJump <- evalSt st linum stmt
       maybe execNextLine jumpToLine maybeJump
         where
@@ -42,7 +43,8 @@ execProg st progZip = liftIO $ unless (endp progZip) $ runIOEval exec
             let prog = toList progZip
             case findIndex ((==n) . lineNum) prog of
               Nothing -> (throwError $ InvalidLineError n)
-              Just idx -> execProg st $ zipToIndex progZip idx
+              -- Skip to line after the jump (i.e. idx + 1).
+              Just idx -> execProg st $ zipToIndex progZip (idx + 1)
 
 lineNum :: CommandLine -> Integer
 lineNum (CommandLine linum _) = linum
@@ -61,7 +63,7 @@ runStatement s = runIOEval $ exec
 runProgram :: [String] -> IO ()
 runProgram xs = runIOEval $ exec
   where exec = do
-          prog <- mapM (liftIOEval) $ map runParseLine xs
+          prog <- liftIOEval $ parseProgram xs
           liftIO $ printProgram prog
           liftIO $ prompt
           liftIO $ execProgramNewStore prog

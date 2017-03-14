@@ -22,15 +22,15 @@ evalSt :: Store -> LineNumber -> Statement -> IOLocoEval Jump
 evalSt st _ (Command cmd args) = mapM (eval st) args >>= command cmd
 evalSt st _ (Dim (Variable name t) args) = undefined
 evalSt _ _ (Dim _ _) = throwError $ TypeError "expected variable for DIM"
-evalSt st linum (For (Variable name _) from to step) =
+evalSt st linum (For (Variable name _) from to step _) =
   for st linum name from to step
-evalSt _ _ (For _ _ _ _) = throwError $ TypeError "expected variable for FOR"
+evalSt _ _ (For _ _ _ _ _) = throwError $ TypeError "expected variable for FOR"
 evalSt st linum (If expr@(BoolBinary _ _ _) thenSt elseSt) =
   ifstmt st linum expr thenSt elseSt
 evalSt _ _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
-evalSt st linum (While expr@(BoolBinary _ _ _)) =
+evalSt st linum (While expr@(BoolBinary _ _ _) _) =
   while st linum expr
-evalSt _ _ (While _) = throwError $ TypeError "expected boolean expression for WHILE"
+evalSt _ _ (While _ _) = throwError $ TypeError "expected boolean expression for WHILE"
 evalSt st _ (Assign (Variable name _) expr) =
   eval st expr >>= assign st name >> return Nothing
 evalSt _ _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"

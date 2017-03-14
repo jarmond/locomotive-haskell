@@ -36,15 +36,14 @@ data ABinOp = Add | Subtract | Multiply | Divide | Mod | IntDiv
 -- of lexical formats.
 data Statement = Command String [LocoExpr]
                | Dim LocoExpr [LocoExpr]
-               | For LocoExpr LocoExpr LocoExpr (Maybe LocoExpr)
+               | For LocoExpr LocoExpr LocoExpr (Maybe LocoExpr) LineNumber
                | If LocoExpr Statement Statement
-               | While LocoExpr
+               | While LocoExpr LineNumber
                | Assign LocoExpr LocoExpr -- TODO multiple :-separated assignment
                deriving (Show,Eq)
 
 -- Program structure
 type LineNumber = Integer
+type Program = [CommandLine]
 data CommandLine = CommandLine LineNumber Statement
   deriving (Show,Eq)
-
-

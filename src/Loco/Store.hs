@@ -9,8 +9,6 @@ import Control.Monad.Except
 import Data.Maybe
 import Data.IORef
 
-type Program = [CommandLine]
-
 type Store = IORef [(String, IORef LocoValue)]
 
 newStore :: IO Store
