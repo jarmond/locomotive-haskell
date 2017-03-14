@@ -64,4 +64,9 @@ parseTests = TestList $ map (uncurry parseCase)
   ,("10 b = 1+(2+3)", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Add (Int 1) (ABinary Add (Int 2) (Int 3))))))
   ,("10 b = 1/(2*3)", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Divide (Int 1) (ABinary Multiply (Int 2) (Int 3))))))
   ,("10 b = 1-(2-3)", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Subtract (Int 1) (ABinary Subtract (Int 2) (Int 3))))))
+
+  -- Control structures
+  ,("10 FOR a%=1 TO 10", CommandLine 10 (For (Variable "a" LInt) (Value (Int 1)) (Value (Int 10)) Nothing))
+  ,("FOR a%=1 TO 10 STEP 2", CommandLine 10 (For (Variable "a" LInt) (Value (Int 1)) (Value (Int 10)) (Just (Value (Int 2)))))
+
   ]

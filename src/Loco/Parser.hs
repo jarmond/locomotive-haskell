@@ -135,7 +135,8 @@ parseFor = do
   reserved "TO"
   end <- parseExpr
   -- TODO optional STEP
-  return $ For var begin end Nothing
+  step <- try $ optional (reserved "STEP" *> parseExpr)
+  return $ For var begin end step
 
 parseAssignment :: Parser Statement
 parseAssignment = do
