@@ -54,9 +54,9 @@ zipToIndex z i = iterate right (start z) !! i
 runStatement :: String -> IO ()
 runStatement s = runIOEval $ exec
   where exec = do
-        st <- liftIO newStore
-        stmt <- liftIOEval $ runParseStatement s
-        evalSt1 st stmt
+          st <- liftIO newStore
+          stmt <- liftIOEval $ runParseStatement s
+          evalSt1 st stmt
 
 runProgram :: [String] -> IO ()
 runProgram xs = runIOEval $ exec
