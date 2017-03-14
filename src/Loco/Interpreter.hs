@@ -13,10 +13,11 @@ import Control.Monad.Except
 import Data.List
 import Data.List.Zipper
 
-
+-- |Execute a program with a new store.
 execProgramNewStore :: Program -> IO ()
 execProgramNewStore prog = newStore >>= execProgram prog
 
+-- |Execute a program using the provided store.
 execProgram :: Program -> Store -> IO ()
 execProgram [] _    = return ()
 execProgram prog st = runIOEval $ execProg st progZip
