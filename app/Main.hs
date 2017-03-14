@@ -17,7 +17,9 @@ main = do
   args <- getArgs
   welcome
   let filename = args !! 1
-  if null args then repl else loadFile filename >>= runProgram
+  if null args then repl else loadAndRun filename
+
+loadAndRun filename = loadFile filename >>= runProgram
 
 loadFile :: FilePath -> IO [String]
 loadFile filename = readFile filename >>= return . lines
