@@ -1,8 +1,10 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-import Parser
+import Loco.Parser
+import Loco.AST
 
 import Test.HUnit
 import Data.Either
+import Control.Monad.Except
 
 main :: IO ()
 main = do
@@ -48,7 +50,9 @@ lineTests = TestList $ map lineCase
 
 -- |Parse line and check AST.
 parseTest :: String -> CommandLine -> Assertion
-parseTest line expected = assertEqual line (Right expected) $ runParseLine line
+parseTest line expected = case runParseLine line of
+                            Left err -> assertFailure $ "exception for " ++ line ++ " " ++ show err
+                            Right result -> assertEqual line result expected
 -- |Helper for defining parse tests.
 parseCase line expected = TestCase $ parseTest line expected
   -- note, fmap . fmap :: (Functor f, Functor f1) => (a -> b) -> f (f1 a) -> f (f1 b)
@@ -57,16 +61,16 @@ parseCase line expected = TestCase $ parseTest line expected
 
 parseTests = TestList $ map (uncurry parseCase)
   -- Arithmetic expressions
-  [("10 a = 1", CommandLine 10 (Assign (Variable "a" TReal) (ArithExpr (Int 1))))
-  ,("10 b = 1+2", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Add (Int 1) (Int 2)))))
-  ,("10 b = 1+2+3", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Add (ABinary Add (Int 1) (Int 2)) (Int 3)))))
-  ,("10 b = (1+2)+3", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Add (ABinary Add (Int 1) (Int 2)) (Int 3)))))
-  ,("10 b = 1+(2+3)", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Add (Int 1) (ABinary Add (Int 2) (Int 3))))))
-  ,("10 b = 1/(2*3)", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Divide (Int 1) (ABinary Multiply (Int 2) (Int 3))))))
-  ,("10 b = 1-(2-3)", CommandLine 10 (Assign (Variable "b" TReal) (ArithExpr (ABinary Subtract (Int 1) (ABinary Subtract (Int 2) (Int 3))))))
+  [("10 a = 1", CommandLine 10 (Assign (Variable "a" LReal) (Value (Int 1))))
+  ,("10 b = 1+2", (CommandLine 10 (Assign (Variable "b" LReal) (ArithBinary Add (Value (Int 1)) (Value (Int 2))))))
+  ,("10 b = 1+2+3", (CommandLine 10 (Assign (Variable "b" LReal) (ArithBinary Add (ArithBinary Add (Value (Int 1)) (Value (Int 2))) (Value (Int 3))))))
+  ,("10 b = (1+2)+3", (CommandLine 10 (Assign (Variable "b" LReal) (ArithBinary Add (ArithBinary Add (Value (Int 1)) (Value (Int 2))) (Value (Int 3))))))
+  ,("10 b = 1+(2+3)", (CommandLine 10 (Assign (Variable "b" LReal) (ArithBinary Add (Value (Int 1)) (ArithBinary Add (Value (Int 2)) (Value (Int 3)))))))
+  ,("10 b = 1/(2*3)", (CommandLine 10 (Assign (Variable "b" LReal) (ArithBinary Divide (Value (Int 1)) (ArithBinary Multiply (Value (Int 2)) (Value (Int 3)))))))
+  ,("10 b = 1-(2-3)", (CommandLine 10 (Assign (Variable "b" LReal) (ArithBinary Subtract (Value (Int 1)) (ArithBinary Subtract (Value (Int 2)) (Value (Int 3)))))))
 
   -- Control structures
   ,("10 FOR a%=1 TO 10", CommandLine 10 (For (Variable "a" LInt) (Value (Int 1)) (Value (Int 10)) Nothing))
-  ,("FOR a%=1 TO 10 STEP 2", CommandLine 10 (For (Variable "a" LInt) (Value (Int 1)) (Value (Int 10)) (Just (Value (Int 2)))))
+  ,("10 FOR a%=1 TO 10 STEP 2", CommandLine 10 (For (Variable "a" LInt) (Value (Int 1)) (Value (Int 10)) (Just (Value (Int 2)))))
 
   ]
