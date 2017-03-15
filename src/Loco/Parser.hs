@@ -2,7 +2,7 @@
 module Loco.Parser
   ( runParseLine
   , runParseStatement
-  , parseProgram
+  , runParseProgram
   ) where
 
 -- TODO convert to Text
@@ -12,14 +12,25 @@ import Loco.AST
 import Loco.Lexer
 
 import Control.Monad
+import Control.Monad.State.Lazy
 import Control.Applicative
 import Control.Arrow (left)
 import Text.Megaparsec
 import Text.Megaparsec.Expr
-import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
 
--- Parser
+-- |Parser
+type Parser = StateT LoopStack (Parsec Dec String)
+
+-- |Parser state stack
+type LoopStack = [LoopCond]
+newtype LoopCond = LoopCond { unLoopCond :: (LocoExpr, LineNumber) }
+
+pop :: Parser LoopCond
+pop = state (\(x:xs) -> (x,xs))
+
+push :: LoopCond -> Parser ()
+push x = state (\xs -> ((),x:xs))
 
 -- Parsing values
 
@@ -128,20 +139,27 @@ parseHyphenSep = do
 parseDim :: Parser Statement
 parseDim = undefined
 
-parseFor  :: Parser Statement
-parseFor = do
+parseFor :: LineNumber -> Parser Statement
+parseFor linum = do
   try $ reserved "FOR"
   var <- parseVariable
   symbol "="
-  begin <- parseExpr
+  from <- parseExpr
   reserved "TO"
-  end <- parseExpr
+  to <- parseExpr
   -- Optional STEP.
   step <- try $ optional (reserved "STEP" *> parseExpr)
-  -- Look ahead to NEXT command. This indicates the jump back the start of the
-  -- loop.
-  jump <- try $ lookAhead $ parseLoop "NEXT"
-  return $ For var begin end step jump
+  -- Push loop condition and return jump onto stack.
+  let cond = BoolBinary Equal var to
+  push $ LoopCond (cond, linum)
+  return $ For var from to step
+
+parseLoopJump :: Parser Statement
+parseLoopJump = do
+  loop <- try (symbol "NEXT" *> return ForLoop <|> symbol "WEND" *> return WhileLoop)
+  loopCond <- pop
+  let (cond, linum) = unLoopCond loopCond
+  return $ LoopJump loop cond linum
 
 parseAssignment :: Parser Statement
 parseAssignment = do
@@ -150,45 +168,31 @@ parseAssignment = do
   expr <- parseExpr
   return $ Assign var expr
 
--- | Loops are delimited by a jumping statement. This parser consumes lines until
--- finding the appropriate jump, then returns the line number. It should be used
--- within try and lookahead.
-parseLoop :: String -> Parser LineNumber
-parseLoop loop = do
-  manyTill' skipLine loopCmd
-  where
-    loopCmd = do
-      linum <- integer
-      reserved loop
-      return linum
-
--- | @manyTill' p end@ Similar to @manyTill p end@, this returns the result of
--- @end@ instead of @p@.
-manyTill' :: Alternative m => m a -> m end -> m end
-manyTill' p end = go where go = end <|> (p *> go)
-
-skipLine = manyTill anyChar eol
-
-parseStatement :: Parser Statement
-parseStatement = parseFor <|>
-                 -- parseDim <|>
-                 -- parseIf <|>
-                 parseHyphenSep <|>
-                 parseAssignment <|>
-                 parseCommaSep <?> "statement"
+-- Line number is passed onto to loop constructs so it can be stored on stack.
+parseStatement :: LineNumber -> Parser Statement
+parseStatement linum = parseFor linum <|>
+                       parseLoopJump <|>
+                       -- parseDim <|>
+                       -- parseIf <|>
+                       parseHyphenSep <|>
+                       parseAssignment <|>
+                       parseCommaSep <?> "statement"
 
 parseLine :: Parser CommandLine
 parseLine = do
-  lineNum <- integer
-  cmd <- parseStatement
-  return $ CommandLine lineNum cmd
+  linum <- integer
+  cmd <- parseStatement linum
+  return $ CommandLine linum cmd
 
+parseProgram :: Parser Program
+parseProgram = some parseLine
 
 runParse :: Parser a -> String -> LocoEval a
-runParse rule text = left (ParserError . parseErrorPretty) $ parse rule "(source)" text
+runParse rule text = left (ParserError . parseErrorPretty) $ runP
+  where
+    runP = runParser stateWrapped "(source)" text
+    stateWrapped = evalStateT rule []
 
-runParseLine = runParse parseLine
-runParseStatement = runParse parseStatement
-
-parseProgram :: [String] -> LocoEval Program
-parseProgram = mapM runParseLine
+runParseLine      = runParse parseLine
+runParseStatement = runParse $ parseStatement 0
+runParseProgram   = runParse parseProgram

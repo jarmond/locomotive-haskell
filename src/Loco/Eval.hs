@@ -13,69 +13,61 @@ import Control.Monad
 
 type Jump = Maybe LineNumber
 
--- |Same as evalSt, but fakes the line number and discards any jump.
+-- |Same as evalSt, but discards any jump.
 evalSt1 :: Store -> Statement -> IOLocoEval ()
-evalSt1 st stmt = evalSt st 10 stmt >> return ()
+evalSt1 st stmt = evalSt st stmt >> return ()
 
 -- |Evaluates (executes) a single statement and maybe returns a line number to jump to.
-evalSt :: Store -> LineNumber -> Statement -> IOLocoEval Jump
-evalSt st _ (Command cmd args) = mapM (eval st) args >>= command cmd
-evalSt st _ (Dim (Variable name t) args) = undefined
-evalSt _ _ (Dim _ _) = throwError $ TypeError "expected variable for DIM"
-evalSt st linum (For (Variable name _) from to step _) =
-  for st linum name from to step
-evalSt _ _ (For _ _ _ _ _) = throwError $ TypeError "expected variable for FOR"
-evalSt st linum (If expr@(BoolBinary _ _ _) thenSt elseSt) =
-  ifstmt st linum expr thenSt elseSt
-evalSt _ _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
-evalSt st linum (While expr@(BoolBinary _ _ _) _) =
-  while st linum expr
-evalSt _ _ (While _ _) = throwError $ TypeError "expected boolean expression for WHILE"
-evalSt st _ (Assign (Variable name _) expr) =
+evalSt :: Store -> Statement -> IOLocoEval Jump
+evalSt st (Command cmd args) = mapM (eval st) args >>= command cmd
+evalSt st (Dim (Variable name t) args) = undefined
+evalSt _ (Dim _ _) = throwError $ TypeError "expected variable for DIM"
+evalSt st (For (Variable name _) from _ step) =
+  for st name from step
+evalSt _ (For _ _ _ _) = throwError $ TypeError "expected variable for FOR"
+evalSt st (If expr@(BoolBinary _ _ _) thenSt elseSt) =
+  ifstmt st expr thenSt elseSt
+evalSt _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
+-- Condition for While is evaluated in LoopJump so this is a nop.
+evalSt st (While expr@(BoolBinary _ _ _)) = return Nothing
+evalSt _ (While _) = throwError $ TypeError "expected boolean expression for WHILE"
+evalSt st (Assign (Variable name _) expr) =
   eval st expr >>= assign st name >> return Nothing
-evalSt _ _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
+evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
+evalSt st (LoopJump _ cond linum) = loopJump st cond linum
 
 command :: String -> [LocoValue] -> IOLocoEval Jump
 command "PRINT" (arg:_) = liftIO $ (putStrLn . prettyShow) arg >> return Nothing
 
--- |Execute WHILE loop.
-while :: Store -> LineNumber -> LocoExpr -> IOLocoEval Jump
-while st linum expr = do
-  cond <- evalBool st expr
-  if cond
-    then getJump st WhileLoop linum >>= return . Just
-    else return Nothing
-
--- |Execute FOR loop. Sets and updates a variable in store until 'to' condition
--- is reached, when it executes a jump to line after NEXT. If condition not
--- reached, execution will continue on next line by default after this returns.
-for :: Store -> LineNumber -> String -> LocoExpr -> LocoExpr -> (Maybe LocoExpr) -> IOLocoEval Jump
-for st linum name from to maybeStep = do
+-- |Execute FOR loop. Sets and updates a variable in store each iteration.
+-- Condition is checked in LoopJump.
+for :: Store -> String -> LocoExpr -> (Maybe LocoExpr) -> IOLocoEval Jump
+for st name from maybeStep = do
   alreadySet <- liftIO $ isVar st name
   if alreadySet
     -- Variable already set, increment by step and check condition.
     then do var <- getVar st name
             stepVal <- step
             var' <- liftIOEval $ locoOp (+) var stepVal
-            cond <- evalBool st $ stop var'
-            if cond
-              then getJump st ForLoop linum >>= return . Just
-              else return Nothing
+            return Nothing
     -- Set variable to initial 'from' value.
     else do fromVal <- eval st from
             assign st name fromVal
             return Nothing
-
   where
     -- Increment value is specified by optional STEP or default of 1.
     step = maybe ((return . Int) 1) (eval st) maybeStep
-    -- Stop condition.
-    stop v = BoolBinary Equal (Value v) to
 
-ifstmt :: Store -> LineNumber -> LocoExpr -> Statement -> Statement -> IOLocoEval Jump
-ifstmt st linum expr thenSt elseSt = do
+loopJump :: Store -> LocoExpr -> LineNumber -> IOLocoEval Jump
+loopJump st cond linum = do
+  cond <- evalBool st cond
+  -- If condition satisfied, continue execution, else jump back to loop start.
+  return $ if cond then Nothing else Just linum
+
+ifstmt :: Store -> LocoExpr -> Statement -> Statement -> IOLocoEval Jump
+ifstmt st expr thenSt elseSt = do
   bool <- evalBool st expr
-  if bool then evalSt st linum thenSt else evalSt st linum elseSt
+  if bool then evalSt st thenSt else evalSt st elseSt
 
 -- |Assign a variable to store. Type safety is enforced by setvar.
 assign :: Store -> String -> LocoValue -> IOLocoEval ()

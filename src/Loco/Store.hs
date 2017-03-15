@@ -56,8 +56,6 @@ matchedVarType _ _ = error "cannot match types for non-variable expression"
 
 -- Loop handling
 
-data Loop = ForLoop | WhileLoop
-
 -- |Returns the jump to end line for loop construct 'con' on a given line 'linum'.
 getJump :: Store -> Loop -> LineNumber -> IOLocoEval LineNumber
 getJump st con linum = do

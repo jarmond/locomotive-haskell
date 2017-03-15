@@ -19,10 +19,7 @@ main = do
   let filename = args !! 1
   if null args then repl else loadAndRun filename
 
-loadAndRun filename = loadFile filename >>= runProgram
-
-loadFile :: FilePath -> IO [String]
-loadFile filename = readFile filename >>= return . lines
+loadAndRun filename = readFile filename >>= runProgram
 
 readPrompt :: IO String
 readPrompt = prompt >> hFlush stdout >> getLine

@@ -52,18 +52,22 @@ instance Pretty BBinOp where
 instance Pretty Statement where
   pPrint (Command name exprs) = text name <> commaArgs exprs
   pPrint (Dim var exprs) = text "DIM" <+> pPrint var <> commaArgs exprs
-  pPrint (For var from to step _) =
+  pPrint (For var from to step) =
     text "FOR" <+> pPrint var <> char '=' <> pPrint from <+> text "TO"
     <+> pPrint to <+> maybe empty pStep step
     where pStep stepExpr = text "STEP" <+> pPrint stepExpr
   pPrint (If expr thenSt elseSt) =
     text "IF" <+> pPrint expr <+> text "THEN" <+> pPrint thenSt
     <+> text "ELSE" <+> pPrint elseSt
-  pPrint (While expr _) = text "WHILE" <+> pPrint expr
+  pPrint (While expr) = text "WHILE" <+> pPrint expr
   pPrint (Assign var expr) = pPrint var <+> char '=' <+> pPrint expr
-
+  pPrint (LoopJump loop (BoolBinary Equal var _) _) = pPrint loop <+> pPrint var
 
 commaArgs exprs = parens $ hcat $ punctuate (char ',') $ map pPrint exprs
+
+instance Pretty Loop where
+  pPrint ForLoop = text "NEXT"
+  pPrint WhileLoop = text "WEND"
 
 instance Pretty CommandLine where
   pPrint (CommandLine linum stmt) = integer linum <+> pPrint stmt
