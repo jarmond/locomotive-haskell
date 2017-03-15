@@ -49,10 +49,11 @@ for st name from maybeStep = do
     then do var <- getVar st name
             stepVal <- step
             var' <- liftIOEval $ locoOp (+) var stepVal
+            setVar st name var'
             return Nothing
     -- Set variable to initial 'from' value.
     else do fromVal <- eval st from
-            assign st name fromVal
+            setVar st name fromVal
             return Nothing
   where
     -- Increment value is specified by optional STEP or default of 1.
