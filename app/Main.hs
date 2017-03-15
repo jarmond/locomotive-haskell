@@ -16,7 +16,7 @@ main :: IO ()
 main = do
   args <- getArgs
   welcome
-  let filename = args !! 1
+  let filename = args !! 0
   if null args then repl else loadAndRun filename
 
 loadAndRun filename = readFile filename >>= runProgram
