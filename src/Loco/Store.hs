@@ -53,21 +53,3 @@ matchedVarType (Variable _ LReal) (Real _)     = True
 matchedVarType (Variable _ LString) (String _) = True
 matchedVarType (Variable _ _) _                = False
 matchedVarType _ _ = error "cannot match types for non-variable expression"
-
--- Loop handling
-
--- |Returns the jump to end line for loop construct 'con' on a given line 'linum'.
-getJump :: Store -> Loop -> LineNumber -> IOLocoEval LineNumber
-getJump st con linum = do
-  var <- getVar st $ loopName con linum
-  return $ extract var
-  where extract (Int x) = x -- Value can only by Int.
-
--- |Sets the jump to end line for loop construct 'con' on a given line 'linum'.
-setJump :: Store -> Loop -> LineNumber -> LineNumber -> IOLocoEval ()
-setJump st con linum jump = setVar st (loopName con linum) (Int jump)
-
-
-loopName con linum = prefix con ++ show linum
-  where prefix ForLoop = "_FOR"
-        prefix WhileLoop = "_WHILE"
