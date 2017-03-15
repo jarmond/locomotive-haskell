@@ -83,6 +83,7 @@ eval st var@(Variable name _) = do
     then return val
     else throwError $ TypeError "in expression"
 eval st (ArithBinary op a b) = aeval st op a b
+eval st (BoolBinary op a b) = beval st op a b
 
 aeval :: Store -> ABinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue
 aeval st Add a b      = liftBinOp extractValue (locoOp (+)) (eval st a) (eval st b)
@@ -119,3 +120,36 @@ evalBool st expr = eval st expr >>= bool
     bool :: LocoValue -> IOLocoEval Bool
     bool (Bool b) = return b
     bool _ = throwError $ TypeError "expected boolean expression"
+
+beval :: Store -> BBinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue
+beval st And a b = liftBinOp extractValue (locoBoolOp (&&)) (eval st a) (eval st b)
+beval st Or a b = liftBinOp extractValue (locoBoolOp (||)) (eval st a) (eval st b)
+beval st Xor a b = liftBinOp extractValue (locoBoolOp xor) (eval st a) (eval st b)
+beval st Greater a b = liftBinOp extractValue (locoRelOp (>)) (eval st a) (eval st b)
+beval st Less a b = liftBinOp extractValue (locoRelOp (<)) (eval st a) (eval st b)
+beval st GreaterEq a b = liftBinOp extractValue (locoRelOp (<=)) (eval st a) (eval st b)
+beval st LessEq a b = liftBinOp extractValue (locoRelOp (>=)) (eval st a) (eval st b)
+beval st Equal a b = liftBinOp extractValue (locoRelOp (==)) (eval st a) (eval st b)
+beval st NotEqual a b = liftBinOp extractValue (locoRelOp (/=)) (eval st a) (eval st b)
+
+xor True False = True
+xor False True = True
+xor _ _        = False
+
+locoBoolOp :: (Bool -> Bool -> Bool) -> LocoValue -> LocoValue -> LocoEval LocoValue
+locoBoolOp op a b = liftM Bool $ op <$> ba <*> bb
+  where ba = toBool a
+        bb = toBool b
+
+locoRelOp :: (forall a. Ord a => a -> a -> Bool) -> LocoValue -> LocoValue -> LocoEval LocoValue
+locoRelOp op (Int a) (Int b) = return $ Bool (a `op` b)
+locoRelOp op (Real a) (Real b) = return $ Bool (a `op` b)
+locoRelOp _ a b = throwError $ TypeError (show a ++ " " ++ show b)
+
+toBool :: LocoValue -> LocoEval Bool
+toBool (Bool b) = return b
+toBool (Int x)
+  | x == -1 = return True
+  | x == 0  = return False
+  | otherwise = throwError $ TypeError ("invalid boolean integer: " ++ show x)
+toBool _ = throwError $ TypeError "boolean value must be boolean or integer"
