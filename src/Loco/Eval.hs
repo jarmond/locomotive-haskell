@@ -87,7 +87,8 @@ eval st var@(Variable name _) = do
     else throwError $ TypeError "in expression"
 eval st (ArithBinary op a b) = aeval st op a b
 eval st (BoolBinary op a b) = beval st op a b
-eval st (Neg expr) = eval st expr >>= (liftIOEval . negateExpr)
+eval st (Neg expr) = eval st expr >>= liftIOEval . negateExpr
+eval st (Not expr) = evalBool st expr >>= return . Bool
 
 negateExpr :: LocoValue -> LocoEval LocoValue
 negateExpr (Int val) = return $ Int (-val)
