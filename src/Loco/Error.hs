@@ -9,6 +9,7 @@ data LocoError = ArgError Int Int
                | ParserError String
                | UndeclaredVarError String
                | InvalidLineError Integer
+               | UnknownCommand String
                | UnknownError String
 instance Show LocoError where show = showError
 
@@ -18,6 +19,7 @@ showError (TypeError msg) = "invalid types: " ++ msg
 showError (ParserError msg) = "parse error: " ++ msg
 showError (UndeclaredVarError msg) = "undeclared variable: " ++ msg
 showError (InvalidLineError n) = "invalid line number: " ++ show n
+showError (UnknownCommand n) = "unknown command: " ++ show n
 showError (UnknownError msg) = msg
 
 type IOLocoEval = ExceptT LocoError IO

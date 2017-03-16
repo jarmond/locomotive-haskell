@@ -45,6 +45,8 @@ data Statement = Command String [LocoExpr]
 
 data Loop = ForLoop | WhileLoop deriving (Show,Eq)
 
+type Jump = Maybe LineNumber
+
 -- Program structure
 type LineNumber = Integer
 type Program = [CommandLine]

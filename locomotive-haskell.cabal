@@ -24,6 +24,7 @@ library
                      , Loco.Store
                      , Loco.Interpreter
                      , Loco.Pretty
+                     , Loco.Commands
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , megaparsec

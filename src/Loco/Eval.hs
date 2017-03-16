@@ -1,17 +1,15 @@
 -- Copyright (C) 2017 Jonathan W. Armond
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Rank2Types #-}
 module Loco.Eval where
 
 import Loco.Error
 import Loco.AST
 import Loco.Store
-import Loco.Pretty
+import Loco.Commands
 
 import Data.IORef
 import Control.Monad.Except
 import Control.Monad
-
-type Jump = Maybe LineNumber
 
 -- |Same as evalSt, but discards any jump.
 evalSt1 :: Store -> Statement -> IOLocoEval ()
@@ -36,8 +34,12 @@ evalSt st (Assign (Variable name _) expr) =
 evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
 evalSt st (LoopJump _ cond linum) = loopJump st cond linum
 
+-- |Execute a command.
 command :: String -> [LocoValue] -> IOLocoEval Jump
-command "PRINT" (arg:_) = liftIO $ (putStrLn . prettyShow) arg >> return Nothing
+command name args = maybe (throwError $ UnknownCommand name)
+                          ($ args)
+                          (lookup name commandList)
+
 
 -- |Execute FOR loop. Sets and updates a variable in store each iteration.
 -- Condition is checked in LoopJump.
@@ -59,6 +61,7 @@ for st name from maybeStep = do
     -- Increment value is specified by optional STEP or default of 1.
     step = maybe ((return . Int) 1) (eval st) maybeStep
 
+-- |Evaluate loop condition and jump if not yet fulfilled.
 loopJump :: Store -> LocoExpr -> LineNumber -> IOLocoEval Jump
 loopJump st cond linum = do
   cond <- evalBool st cond
