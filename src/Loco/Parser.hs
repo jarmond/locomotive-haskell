@@ -154,6 +154,13 @@ parseFor linum = do
   push $ LoopCond (cond, linum)
   return $ For var from to step
 
+parseWhile :: LineNumber -> Parser Statement
+parseWhile linum = do
+  try $ reserved "WHILE"
+  cond <- parseExpr
+  push $ LoopCond (cond, linum)
+  return $ While cond
+
 parseLoopJump :: Parser Statement
 parseLoopJump = do
   loop <- try (symbol "NEXT" *> return ForLoop <|> symbol "WEND" *> return WhileLoop)
@@ -171,6 +178,7 @@ parseAssignment = do
 -- Line number is passed onto to loop constructs so it can be stored on stack.
 parseStatement :: LineNumber -> Parser Statement
 parseStatement linum = parseFor linum <|>
+                       parseWhile linum <|>
                        parseLoopJump <|>
                        -- parseDim <|>
                        -- parseIf <|>
