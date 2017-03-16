@@ -87,6 +87,12 @@ eval st var@(Variable name _) = do
     else throwError $ TypeError "in expression"
 eval st (ArithBinary op a b) = aeval st op a b
 eval st (BoolBinary op a b) = beval st op a b
+eval st (Neg expr) = eval st expr >>= (liftIOEval . negateExpr)
+
+negateExpr :: LocoValue -> LocoEval LocoValue
+negateExpr (Int val) = return $ Int (-val)
+negateExpr (Real val) = return $ Real (-val)
+negateExpr _ = throwError $ TypeError "cannot negate non-numeric expression"
 
 aeval :: Store -> ABinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue
 aeval st Add a b      = liftBinOp extractValue (locoOp (+)) (eval st a) (eval st b)
