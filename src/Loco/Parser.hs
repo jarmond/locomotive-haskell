@@ -1,4 +1,5 @@
 -- Copyright (C) 2017 Jonathan W. Armond
+{-# LANGUAGE MonadComprehensions #-}
 module Loco.Parser
   ( runParseLine
   , runParseStatement
@@ -63,11 +64,10 @@ parseVariable = do
   t <- parseType
   return $ Variable n t
 
-parseStrCmd :: Parser LocoExpr
-parseStrCmd = do
-  cmd <- try $ (symbol "STR" <|> symbol "CHR") <* symbol "$"
-  args <- parseArgs
-  return $ StrCmd cmd args
+parseFunction :: Parser LocoExpr
+parseFunction = do
+  (cmd,args) <- try $ [(x,y) | x <- funcIdentifier, y <- (parens parseArgs)]
+  return $ Function cmd args
 
 parseBExpr :: Parser LocoExpr
 parseBExpr = makeExprParser bTerm bOperators
@@ -106,7 +106,7 @@ aTerm = parens parseAExpr
   <|> (Value . Real)  <$> real
 
 parseExpr :: Parser LocoExpr
-parseExpr = (liftM Value) parseString <|> parseStrCmd <|> parseAExpr
+parseExpr = (liftM Value) parseString <|> parseFunction <|> parseAExpr
 
 -- |Parse an argument list.
 parseArgs :: Parser [LocoExpr]

@@ -20,12 +20,12 @@ instance Pretty LocoValue where
   pPrint (Int val)        = integer val
   pPrint (Real val)       = double val
   pPrint (String val)     = doubleQuotes $ text val
-  pPrint (Func name expr) = text name <> pPrint expr
+  pPrint (Func fn)        = pPrint fn
 
 instance Pretty LocoExpr where
   pPrint (Value val) = pPrint val
   pPrint (Variable name t) = text name <> pPrint t
-  pPrint (StrCmd name exprs) = text name <> commaArgs exprs
+  pPrint (Function name args) = text name <> commaArgs args
   pPrint (Neg expr) = char '-' <> pPrint expr
   pPrint (ArithBinary op expr1 expr2) = pPrint expr1 <+> pPrint op <+> pPrint expr2
   pPrint (Not expr) = text "NOT" <+> pPrint expr

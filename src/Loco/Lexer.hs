@@ -50,13 +50,15 @@ command = lexeme $ some letterChar
 reserved :: GenParser m => String -> m ()
 reserved w = string' w *> notFollowedBy alphaNumChar *> sc
 
--- | Reserved word list
-reservedList :: [String]
-reservedList = reservedIdentifiers
-
-identifier :: GenParser m => m String
-identifier = (lexeme . try) (some letterChar >>= check)
+genericIdentifier :: GenParser m => m Char -> m String
+genericIdentifier charParser = (lexeme . try) (some charParser >>= check)
   where
-    check x = if (map toUpper x) `elem` reservedList
+    check x = if (map toUpper x) `elem` reservedIdentifiers
               then fail $ "command " ++ show x ++ " cannot be an identifier"
               else return x
+
+identifier :: GenParser m => m String
+identifier = genericIdentifier $ letterChar <|> char '$'
+
+funcIdentifier :: GenParser m => m String
+funcIdentifier = genericIdentifier letterChar

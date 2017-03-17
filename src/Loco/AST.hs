@@ -9,19 +9,19 @@ data LocoType = LInt | LReal | LString
 data LocoValue = Int Integer
                | Real Double
                | String String
-               | Bool Bool
-               | Func String LocoExpr
+               | Bool Bool -- Not instantiable by user
+               | Func LocoExpr
                deriving (Show,Eq)
 
 -- |Abstract syntax for expressions (for assignments).
 -- StrCmd is for string processing commands where the command name is followed by $
 data LocoExpr = Value LocoValue
               | Variable String LocoType
-              | StrCmd String [LocoExpr]
               | Neg LocoExpr
               | ArithBinary ABinOp LocoExpr LocoExpr
               | Not LocoExpr
               | BoolBinary BBinOp LocoExpr LocoExpr
+              | Function String [LocoExpr]
               deriving (Show,Eq)
 
 -- |Binary boolean logic operation.
