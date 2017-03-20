@@ -35,7 +35,7 @@ instance Pretty ABinOp where
   pPrint Subtract = char '-'
   pPrint Multiply = char '*'
   pPrint Divide   = char '/'
-  pPrint Mod      = char '%'
+  pPrint Mod      = text "MOD"
 
 instance Pretty BBinOp where
   pPrint And = text "AND"
