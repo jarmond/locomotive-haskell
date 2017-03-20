@@ -17,6 +17,7 @@ evalSt1 st stmt = evalSt st stmt >> return ()
 
 -- |Evaluates (executes) a single statement and maybe returns a line number to jump to.
 evalSt :: Store -> Statement -> IOLocoEval Jump
+evalSt _ (Comment _) = return Nothing
 evalSt st (Command cmd args) = mapM (eval st) args >>= command cmd
 evalSt st (Dim (Variable name t) args) = undefined
 evalSt _ (Dim _ _) = throwError $ TypeError "expected variable for DIM"
