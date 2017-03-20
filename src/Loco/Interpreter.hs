@@ -71,5 +71,14 @@ runProgram xs = runIOEval $ exec
 printProgram :: Program -> IO ()
 printProgram prog = mapM_ (putStrLn . prettyShow) prog
 
+runShowProgram :: String -> IO ()
+runShowProgram xs = runIOEval $ exec
+  where exec = do
+          prog <- liftIOEval $ runParseProgram xs
+          liftIO $ showProgram prog
+
+showProgram :: Program -> IO ()
+showProgram prog = mapM_ (putStrLn . show) prog
+
 prompt :: IO ()
 prompt = putStrLn "Ready"
