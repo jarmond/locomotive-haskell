@@ -4,7 +4,6 @@ module Loco.Pretty
   ) where
 
 import Loco.AST
-import Loco.Identifiers
 
 import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJClass

@@ -10,7 +10,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Prim
 import qualified Text.Megaparsec.Lexer as L
 
-import Loco.Identifiers
+import Loco.Keywords
 
 -- Generalizes these lexers to work in a monad transformer stack.
 type GenParser = MonadParsec Dec String
@@ -18,8 +18,6 @@ type GenParser = MonadParsec Dec String
 -- | Space consumer
 sc :: GenParser m => m ()
 sc = L.space (void spaceChar) empty empty
--- sc = L.space (void spaceChar) lineCmnt empty
---   where lineCmnt = L.skipLineComment "REM"
 
 -- | lexeme consumes whitespace after every lexeme.
 lexeme :: GenParser m => m a -> m a
@@ -54,8 +52,8 @@ reserved w = string' w *> notFollowedBy alphaNumChar *> sc
 genericIdentifier :: GenParser m => m Char -> m String
 genericIdentifier charParser = (lexeme . try) (some charParser >>= check)
   where
-    check x = if (map toUpper x) `elem` reservedIdentifiers
-              then fail $ "command " ++ show x ++ " cannot be an identifier"
+    check x = if (map toUpper x) `elem` keywords
+              then fail $ "keyword " ++ show x ++ " cannot be an identifier"
               else return x
 
 identifier :: GenParser m => m String
