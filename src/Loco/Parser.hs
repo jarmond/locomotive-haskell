@@ -118,9 +118,6 @@ parseArgs = parseExpr `sepBy` (symbol ",")
 --  CommaSep has 0 or more comma-separated argument, plus a second clause
 --  with a single argument
 --  HyphenSep has 2 arguments separated by a hyphen.
---  Dim is a special case consisting of a typed variable and comma-separated list of
---  dimensions.
---  For is a special case of the format e.g. FOR I=1 TO 10 STEP 2
 
 -- |Parse commands with 0 or more comma-separated arguments, optionally enclosed
 -- in parentheses.
@@ -140,6 +137,15 @@ parseHyphenSep = do
 
 parseDim :: Parser Statement
 parseDim = undefined
+
+parseIf :: LineNumber -> Parser Statement
+parseIf linum = do
+  try $ reserved "IF"
+  cond <- parseBExpr
+  reserved "THEN"
+  thenSt <- parseStatement linum
+  elseSt <- optional $ (reserved "ELSE" *> parseStatement linum)
+  return $ If cond thenSt elseSt
 
 parseFor :: LineNumber -> Parser Statement
 parseFor linum = do
@@ -190,7 +196,7 @@ parseStatement linum = parseComment <|>
                        parseWhile linum <|>
                        parseLoopJump <|>
                        -- parseDim <|>
-                       -- parseIf <|>
+                       parseIf linum <|>
                        parseHyphenSep <|>
                        parseAssignment <|>
                        parseCommaSep <?> "statement"

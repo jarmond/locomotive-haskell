@@ -37,7 +37,7 @@ data ABinOp = Add | Subtract | Multiply | Divide | Mod | IntDiv
 data Statement = Command String [LocoExpr]
                | Dim LocoExpr [LocoExpr]
                | For LocoExpr LocoExpr LocoExpr (Maybe LocoExpr)
-               | If LocoExpr Statement Statement
+               | If LocoExpr Statement (Maybe Statement)
                | While LocoExpr
                | LoopJump Loop LocoExpr LineNumber
                | Assign LocoExpr LocoExpr -- TODO multiple :-separated assignment
