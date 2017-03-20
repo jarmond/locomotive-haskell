@@ -13,7 +13,7 @@ import Text.PrettyPrint.HughesPJClass
 
 instance Pretty LocoType where
   pPrint LInt    = char '%'
-  pPrint LReal   = char '!'
+  pPrint LReal   = empty
   pPrint LString = char '$'
 
 instance Pretty LocoValue where
