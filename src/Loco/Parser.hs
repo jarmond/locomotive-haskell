@@ -159,7 +159,7 @@ parseFor linum = do
 parseWhile :: LineNumber -> Parser Statement
 parseWhile linum = do
   try $ reserved "WHILE"
-  cond <- parseExpr
+  cond <- parseBExpr
   push $ LoopCond (cond, linum)
   return $ While cond
 
