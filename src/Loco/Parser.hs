@@ -78,15 +78,15 @@ bOperators =
   , [InfixL (BoolBinary And       <$ reserved "AND")
     ,InfixL (BoolBinary Or        <$ reserved "OR")
     ,InfixL (BoolBinary Xor       <$ reserved "XOR")
-    ,InfixL (BoolBinary Greater   <$ reserved ">")
-    ,InfixL (BoolBinary Less      <$ reserved "<")
-    ,InfixL (BoolBinary GreaterEq <$ reserved ">=")
-    ,InfixL (BoolBinary LessEq    <$ reserved "<=")
-    ,InfixL (BoolBinary Equal     <$ reserved "=")
-    ,InfixL (BoolBinary NotEqual  <$ reserved "<>")]]
+    ,InfixL (BoolBinary GreaterEq <$ symbol ">=")
+    ,InfixL (BoolBinary LessEq    <$ symbol "<=")
+    ,InfixL (BoolBinary NotEqual  <$ symbol "<>")
+    ,InfixL (BoolBinary Greater   <$ symbol ">")
+    ,InfixL (BoolBinary Less      <$ symbol "<")
+    ,InfixL (BoolBinary Equal     <$ symbol "=")]]
 
 bTerm :: Parser LocoExpr
-bTerm = parens parseBExpr <|> parens parseAExpr
+bTerm = parens parseBExpr <|> parseAExpr
 
 parseAExpr :: Parser LocoExpr
 parseAExpr = makeExprParser aTerm aOperators
@@ -95,7 +95,9 @@ aOperators :: [[Operator Parser LocoExpr]]
 aOperators =
  [ [Prefix (Neg <$ symbol "-")]
   , [InfixL (ArithBinary Multiply <$ symbol "*")
-  ,  InfixL (ArithBinary Divide   <$ symbol "/")]
+  ,  InfixL (ArithBinary Divide   <$ symbol "/")
+  ,  InfixL (ArithBinary IntDiv   <$ symbol "\\")
+  ,  InfixL (ArithBinary Mod      <$ symbol "%")]
   , [InfixL (ArithBinary Add      <$ symbol "+")
   ,  InfixL (ArithBinary Subtract <$ symbol "-")]]
 
