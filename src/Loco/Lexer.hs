@@ -17,8 +17,9 @@ type GenParser = MonadParsec Dec String
 
 -- | Space consumer
 sc :: GenParser m => m ()
-sc = L.space (void spaceChar) lineCmnt empty
-  where lineCmnt = L.skipLineComment "REM"
+sc = L.space (void spaceChar) empty empty
+-- sc = L.space (void spaceChar) lineCmnt empty
+--   where lineCmnt = L.skipLineComment "REM"
 
 -- | lexeme consumes whitespace after every lexeme.
 lexeme :: GenParser m => m a -> m a

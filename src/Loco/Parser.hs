@@ -175,9 +175,16 @@ parseAssignment = do
   expr <- parseExpr
   return $ Assign var expr
 
+parseComment :: Parser Statement
+parseComment = do
+  try $ reserved "REM"
+  text <- manyTill anyChar newline
+  return $ Comment text
+
 -- Line number is passed onto to loop constructs so it can be stored on stack.
 parseStatement :: LineNumber -> Parser Statement
-parseStatement linum = parseFor linum <|>
+parseStatement linum = parseComment <|>
+                       parseFor linum <|>
                        parseWhile linum <|>
                        parseLoopJump <|>
                        -- parseDim <|>

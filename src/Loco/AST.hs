@@ -41,6 +41,7 @@ data Statement = Command String [LocoExpr]
                | While LocoExpr
                | LoopJump Loop LocoExpr LineNumber
                | Assign LocoExpr LocoExpr -- TODO multiple :-separated assignment
+               | Comment String
                deriving (Show,Eq)
 
 data Loop = ForLoop | WhileLoop deriving (Show,Eq)

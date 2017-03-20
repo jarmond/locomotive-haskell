@@ -62,6 +62,7 @@ instance Pretty Statement where
   pPrint (While expr) = text "WHILE" <+> pPrint expr
   pPrint (Assign var expr) = pPrint var <+> char '=' <+> pPrint expr
   pPrint (LoopJump loop (BoolBinary Equal var _) _) = pPrint loop <+> pPrint var
+  pPrint (Comment cmt) = text "REM" <+> text cmt
 
 commaArgs exprs = parens $ hcat $ punctuate (char ',') $ map pPrint exprs
 
