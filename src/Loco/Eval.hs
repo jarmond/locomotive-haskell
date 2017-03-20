@@ -90,6 +90,13 @@ eval st (ArithBinary op a b) = aeval st op a b
 eval st (BoolBinary op a b) = beval st op a b
 eval st (Neg expr) = eval st expr >>= liftIOEval . negateExpr
 eval st (Not expr) = evalBool st expr >>= return . Bool
+eval st (Function name args) = mapM (eval st) args >>= liftIOEval . (function name)
+
+function :: String -> [LocoValue] -> LocoEval LocoValue
+function name args = maybe (throwError $ UnknownCommand name)
+                           ($ args)
+                           (lookupFn name)
+
 
 negateExpr :: LocoValue -> LocoEval LocoValue
 negateExpr (Int val) = return $ Int (-val)
