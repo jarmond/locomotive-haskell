@@ -69,10 +69,11 @@ loopJump st cond linum = do
   -- If condition satisfied, continue execution, else jump back to loop start.
   return $ if cond then Nothing else Just linum
 
-ifstmt :: Store -> LocoExpr -> Statement -> Statement -> IOLocoEval Jump
+ifstmt :: Store -> LocoExpr -> Statement -> Maybe Statement -> IOLocoEval Jump
 ifstmt st expr thenSt elseSt = do
   bool <- evalBool st expr
-  if bool then evalSt st thenSt else evalSt st elseSt
+  if bool then evalSt st thenSt
+          else maybe (return Nothing) (evalSt st) elseSt
 
 -- |Assign a variable to store. Type safety is enforced by setvar.
 assign :: Store -> String -> LocoValue -> IOLocoEval ()
@@ -109,6 +110,7 @@ aeval st Subtract a b = liftBinOp extractValue (locoOp (-)) (eval st a) (eval st
 aeval st Multiply a b = liftBinOp extractValue (locoOp (*)) (eval st a) (eval st b)
 aeval st Divide a b   = liftBinOp extractValue locoDiv (eval st a) (eval st b)
 aeval st IntDiv a b   = liftBinOp extractValue locoIntDiv (eval st a) (eval st b)
+aeval st Mod a b      = liftBinOp extractValue locoMod (eval st a) (eval st b)
 
 -- |Lifts a binary function f into monad n, given an unpacker u for m c.
 liftBinOp :: (Monad m, Monad n) => (m c -> c) -> (a -> b -> m c) -> n a -> n b -> n c
@@ -120,16 +122,20 @@ liftBinOp u f na nb = do
 locoOp :: (forall a. Num a => a -> a -> a) -> LocoValue -> LocoValue -> LocoEval LocoValue
 locoOp op (Int a) (Int b) = return $ Int (a `op` b)
 locoOp op (Real a) (Real b) = return $ Real (a `op` b)
-locoOp _ a b = throwError $ TypeError (show a ++ " " ++ show b)
+locoOp op a b = throwError $ TypeError (show a ++ " op " ++ show b)
 
 locoDiv :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoDiv (Int a) (Int b) = return $ Int (a `div` b)
 locoDiv (Real a) (Real b) = return $ Real (a / b)
-locoDiv a b = throwError $ TypeError (show a ++ " " ++ show b)
+locoDiv a b = throwError $ TypeError (show a ++ " / " ++ show b)
 
 locoIntDiv :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoIntDiv (Int a) (Int b) = return $ Int (a `div` b)
-locoIntDiv a b = throwError $ TypeError (show a ++ " " ++ show b)
+locoIntDiv a b = throwError $ TypeError (show a ++ " \\ " ++ show b)
+
+locoMod :: LocoValue -> LocoValue -> LocoEval LocoValue
+locoMod (Int a) (Int b) = return $ Int (a `mod` b)
+locoMod a b = throwError $ TypeError (show a ++ " MOD " ++ show b)
 
 -- |Evaluate a boolean expression to a Bool.
 evalBool :: Store -> LocoExpr -> IOLocoEval Bool

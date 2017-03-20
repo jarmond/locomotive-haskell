@@ -97,15 +97,15 @@ aOperators =
   , [InfixL (ArithBinary Multiply <$ symbol "*")
   ,  InfixL (ArithBinary Divide   <$ symbol "/")
   ,  InfixL (ArithBinary IntDiv   <$ symbol "\\")
-  ,  InfixL (ArithBinary Mod      <$ symbol "%")]
+  ,  InfixL (ArithBinary Mod      <$ reserved "MOD")]
   , [InfixL (ArithBinary Add      <$ symbol "+")
   ,  InfixL (ArithBinary Subtract <$ symbol "-")]]
 
 aTerm :: Parser LocoExpr
 aTerm = parens parseAExpr
-  <|> parseVariable
-  <|> (Value . Int)   <$> try integer
-  <|> (Value . Real)  <$> real
+        <|> parseVariable
+        <|> (Value . Int)   <$> try integer
+        <|> (Value . Real)  <$> real
 
 parseExpr :: Parser LocoExpr
 parseExpr = (liftM Value) parseString <|> parseFunction <|> parseAExpr
