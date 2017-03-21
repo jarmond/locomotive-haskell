@@ -57,7 +57,8 @@ instance Pretty Statement where
     where pStep stepExpr = text "STEP" <+> pPrint stepExpr
   pPrint (If expr thenSt elseSt) =
     text "IF" <+> pPrint expr <+> text "THEN" <+> pPrint thenSt
-    <+> text "ELSE" <+> pPrint elseSt
+    <+> maybe empty elseP elseSt
+    where elseP stmt = text "ELSE" <+> pPrint stmt
   pPrint (While expr) = text "WHILE" <+> pPrint expr
   pPrint (Assign var expr) = pPrint var <+> char '=' <+> pPrint expr
   pPrint (LoopJump loop _ _) = pPrint loop
