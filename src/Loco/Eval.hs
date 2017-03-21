@@ -82,11 +82,7 @@ assign st name val = setVar st name val
 -- |Evaluate an expression.
 eval :: Store -> LocoExpr -> IOLocoEval LocoValue
 eval _  (Value val)          = return val
-eval st var@(Variable name _) = do
-  val <- getVar st name
-  if matchedVarType var val
-    then return val
-    else throwError $ TypeError "in expression"
+eval st (Variable name _)    = getVar st name
 eval st (ArithBinary op a b) = aeval st op a b
 eval st (BoolBinary op a b) = beval st op a b
 eval st (Neg expr) = eval st expr >>= liftIOEval . negateExpr
