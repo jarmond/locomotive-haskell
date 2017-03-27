@@ -29,17 +29,18 @@ getVar storeRef (Variable name _) = do
 -- |Sets a variable in store.
 setVar :: Store -> LocoExpr -> LocoValue -> IOLocoEval ()
 setVar storeRef (Variable name varType) val = do
-  store <- liftIO $ readIORef storeRef
   -- Try to coerce type if possible.
   val' <- liftIOEval $ coerceType varType val
-  case (lookup name store) of
-    -- New variable, store it.
-    Nothing -> do
-      valRef <- liftIO $ newIORef val'
-      liftIO $ writeIORef storeRef ((name, valRef) : store)
-    -- Existing variable, store it.
-    Just curRef -> do
-      liftIO $ writeIORef curRef val'
+  liftIO $ do
+    store <- readIORef storeRef
+    case (lookup name store) of
+      -- New variable, store it.
+      Nothing -> do
+        valRef <- newIORef val'
+        writeIORef storeRef ((name, valRef) : store)
+      -- Existing variable, store it.
+      Just curRef -> do
+        writeIORef curRef val'
 
 printStore :: Store -> IO ()
 printStore storeRef = do
