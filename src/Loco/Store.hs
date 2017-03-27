@@ -3,6 +3,7 @@ module Loco.Store where
 
 import Loco.AST
 import Loco.Error
+import Loco.Pretty
 
 import Control.Monad
 import Control.Monad.Except
@@ -40,6 +41,15 @@ setVar storeRef name val = do
       if matchedTypes cur val
         then liftIO $ writeIORef curRef val
         else throwError $ TypeError "in assignment"
+
+printStore :: Store -> IO ()
+printStore storeRef = do
+  store <- readIORef storeRef
+  forM_ store printEntry
+  putStrLn ""
+    where printEntry (name, valRef) = do
+            val <- readIORef valRef
+            putStr $ name ++ ": " ++ show val ++ " "
 
 matchedTypes :: LocoValue -> LocoValue -> Bool
 matchedTypes (Int _) (Int _)       = True

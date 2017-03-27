@@ -36,17 +36,19 @@ data ABinOp = Add | Subtract | Multiply | Divide | Mod | IntDiv
 -- of lexical formats.
 data Statement = Command String [LocoExpr]
                | Dim LocoExpr [LocoExpr]
-               | For LocoExpr LocoExpr LocoExpr (Maybe LocoExpr)
+               | For LocoExpr LocoExpr LocoExpr (Maybe LocoExpr) LineNumber
                | If LocoExpr Statement (Maybe Statement)
-               | While LocoExpr
-               | LoopJump Loop LocoExpr LineNumber
+               | While LocoExpr LineNumber
+               | LoopJump Loop LineNumber
                | Assign LocoExpr LocoExpr -- TODO multiple :-separated assignment
                | Comment String
                deriving (Show,Eq)
 
 data Loop = ForLoop | WhileLoop deriving (Show,Eq)
 
-type Jump = Maybe LineNumber
+-- |Action to take after execution of a line: Jump to a line, jump to a line and
+-- immediately skip to the next (or terminate), or go to next line.
+data Jump = Jump LineNumber | JumpNext LineNumber | Next
 
 -- Program structure
 type LineNumber = Integer

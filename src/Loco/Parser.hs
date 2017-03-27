@@ -21,16 +21,12 @@ import Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Lexer as L
 
 -- |Parser
-type Parser = StateT LoopStack (Parsec Dec String)
+type Parser = StateT [LineNumber] (Parsec Dec String)
 
--- |Parser state stack
-type LoopStack = [LoopCond]
-newtype LoopCond = LoopCond { unLoopCond :: (LocoExpr, LineNumber) }
-
-pop :: Parser LoopCond
+pop :: Parser LineNumber
 pop = state (\(x:xs) -> (x,xs))
 
-push :: LoopCond -> Parser ()
+push :: LineNumber -> Parser ()
 push x = state (\xs -> ((),x:xs))
 
 -- Parsing values
@@ -157,24 +153,41 @@ parseFor linum = do
   to <- parseExpr
   -- Optional STEP.
   step <- try $ optional (reserved "STEP" *> parseExpr)
-  -- Push loop condition and return jump onto stack.
-  let cond = BoolBinary Equal var to
-  push $ LoopCond (cond, linum)
-  return $ For var from to step
+  -- Push loop start onto stack
+  push linum
+  -- Parse down to corresponding loop jump
+  jmp <- try $ lookAhead $ parseToMatchingJump 0
+  return $ For var from to step jmp
 
 parseWhile :: LineNumber -> Parser Statement
 parseWhile linum = do
   try $ reserved "WHILE"
   cond <- parseBExpr
-  push $ LoopCond (cond, linum)
-  return $ While cond
+  -- Push loop start onto stack
+  push linum
+  -- Parse down to corresponding loop jump
+  jmp <- try $ lookAhead $ parseToMatchingJump 0
+  return $ While cond jmp
+
+-- |Skip to matching loop closure. @n@ is loop depth, returns only when @n@=0.
+parseToMatchingJump :: Int -> Parser LineNumber
+parseToMatchingJump n = do
+  linum <- integer
+  loopStart <|> loopEnd linum <|> (skipLine >> parseToMatchingJump n)
+    where
+      loopStart = (reserved "WHILE" <|> reserved "FOR") >> parseToMatchingJump (n+1)
+
+      loopEnd linum = (reserved "NEXT" <|> reserved "WEND")
+                      >> if n==0 then return linum
+                         else parseToMatchingJump (n-1)
+
+      skipLine = manyTill anyChar newline
 
 parseLoopJump :: Parser Statement
 parseLoopJump = do
   loop <- try (symbol "NEXT" *> return ForLoop <|> symbol "WEND" *> return WhileLoop)
-  loopCond <- pop
-  let (cond, linum) = unLoopCond loopCond
-  return $ LoopJump loop cond linum
+  jmp <- pop
+  return $ LoopJump loop jmp
 
 parseAssignment :: Parser Statement
 parseAssignment = do

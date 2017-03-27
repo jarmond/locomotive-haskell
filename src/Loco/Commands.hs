@@ -35,9 +35,9 @@ commands = Map.fromList
 
 -- Command implementations
 
-printCmd (arg:_) = liftIO $ (putStrLn . prettyShow) arg >> return Nothing
+printCmd (arg:_) = liftIO $ (putStrLn . prettyShow) arg >> return Next
 
-goto (arg:_) = liftIOEval $ getInt arg >>= return . Just
+goto (arg:_) = liftIOEval $ getInt arg >>= return . Jump
 
 
 -- Functions

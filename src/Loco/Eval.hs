@@ -17,23 +17,21 @@ evalSt1 st stmt = evalSt st stmt >> return ()
 
 -- |Evaluates (executes) a single statement and maybe returns a line number to jump to.
 evalSt :: Store -> Statement -> IOLocoEval Jump
-evalSt _ (Comment _) = return Nothing
+evalSt _ (Comment _) = return Next
 evalSt st (Command cmd args) = mapM (eval st) args >>= command cmd
 evalSt st (Dim (Variable name t) args) = undefined
 evalSt _ (Dim _ _) = throwError $ TypeError "expected variable for DIM"
-evalSt st (For (Variable name _) from _ step) =
-  for st name from step
-evalSt _ (For _ _ _ _) = throwError $ TypeError "expected variable for FOR"
+evalSt st forSt@(For (Variable _ _) _ _ _ _) = for st forSt
+evalSt _ (For _ _ _ _ _ ) = throwError $ TypeError "expected variable for FOR"
 evalSt st (If expr@(BoolBinary _ _ _) thenSt elseSt) =
   ifstmt st expr thenSt elseSt
 evalSt _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
--- Condition for While is evaluated in LoopJump so this is a nop.
-evalSt st (While expr@(BoolBinary _ _ _)) = return Nothing
-evalSt _ (While _) = throwError $ TypeError "expected boolean expression for WHILE"
+evalSt st (While expr@(BoolBinary _ _ _) linum) = while st expr linum
+evalSt _ (While _ _) = throwError $ TypeError "expected boolean expression for WHILE"
 evalSt st (Assign (Variable name _) expr) =
-  eval st expr >>= assign st name >> return Nothing
+  eval st expr >>= assign st name >> return Next
 evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
-evalSt st (LoopJump _ cond linum) = loopJump st cond linum
+evalSt st (LoopJump _ linum) = return $ Jump linum
 
 -- |Execute a command.
 command :: String -> [LocoValue] -> IOLocoEval Jump
@@ -41,11 +39,16 @@ command name args = maybe (throwError $ UnknownCommand name)
                           ($ args)
                           (lookupCmd name)
 
+-- |Execute WHILE loop.
+while :: Store -> LocoExpr -> LineNumber -> IOLocoEval Jump
+while st cond jmp = do
+  chkCond <- evalBool st cond
+  if chkCond then return Next else return $ JumpNext jmp
 
 -- |Execute FOR loop. Sets and updates a variable in store each iteration.
 -- Condition is checked in LoopJump.
-for :: Store -> String -> LocoExpr -> (Maybe LocoExpr) -> IOLocoEval Jump
-for st name from maybeStep = do
+for :: Store -> Statement -> IOLocoEval Jump
+for st forSt@(For (Variable name _) from to maybeStep jmp) = do
   alreadySet <- liftIO $ isVar st name
   if alreadySet
     -- Variable already set, increment by step and check condition.
@@ -53,27 +56,23 @@ for st name from maybeStep = do
             stepVal <- step
             var' <- liftIOEval $ locoOp (+) var stepVal
             setVar st name var'
-            return Nothing
-    -- Set variable to initial 'from' value.
+            chkCond <- evalBool st $ cond var'
+            return $ if chkCond then Next else JumpNext jmp
+    -- Set variable to initial 'from' value, and check restart.
     else do fromVal <- eval st from
             setVar st name fromVal
-            return Nothing
+            for st forSt
   where
     -- Increment value is specified by optional STEP or default of 1.
     step = maybe ((return . Int) 1) (eval st) maybeStep
-
--- |Evaluate loop condition and jump if not yet fulfilled.
-loopJump :: Store -> LocoExpr -> LineNumber -> IOLocoEval Jump
-loopJump st cond linum = do
-  cond <- evalBool st cond
-  -- If condition satisfied, continue execution, else jump back to loop start.
-  return $ if cond then Nothing else Just linum
+    -- Loop condition.
+    cond var = BoolBinary LessEq (Value var) to
 
 ifstmt :: Store -> LocoExpr -> Statement -> Maybe Statement -> IOLocoEval Jump
 ifstmt st expr thenSt elseSt = do
   bool <- evalBool st expr
   if bool then evalSt st thenSt
-          else maybe (return Nothing) (evalSt st) elseSt
+          else maybe (return Next) (evalSt st) elseSt
 
 -- |Assign a variable to store. Type safety is enforced by setvar.
 assign :: Store -> String -> LocoValue -> IOLocoEval ()
@@ -147,8 +146,8 @@ beval st Or a b = liftBinOp extractValue (locoBoolOp (||)) (eval st a) (eval st 
 beval st Xor a b = liftBinOp extractValue (locoBoolOp xor) (eval st a) (eval st b)
 beval st Greater a b = liftBinOp extractValue (locoRelOp (>)) (eval st a) (eval st b)
 beval st Less a b = liftBinOp extractValue (locoRelOp (<)) (eval st a) (eval st b)
-beval st GreaterEq a b = liftBinOp extractValue (locoRelOp (<=)) (eval st a) (eval st b)
-beval st LessEq a b = liftBinOp extractValue (locoRelOp (>=)) (eval st a) (eval st b)
+beval st GreaterEq a b = liftBinOp extractValue (locoRelOp (>=)) (eval st a) (eval st b)
+beval st LessEq a b = liftBinOp extractValue (locoRelOp (<=)) (eval st a) (eval st b)
 beval st Equal a b = liftBinOp extractValue (locoRelOp (==)) (eval st a) (eval st b)
 beval st NotEqual a b = liftBinOp extractValue (locoRelOp (/=)) (eval st a) (eval st b)
 

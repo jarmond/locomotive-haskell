@@ -28,23 +28,30 @@ execProg :: Store -> Zipper CommandLine -> IOLocoEval ()
 execProg st progZip = liftIO $ unless (endp progZip) $ runIOEval exec
   where
     exec = do
-      let (CommandLine linum stmt) = cursor progZip
+      let cmdline@(CommandLine linum stmt) = cursor progZip
       -- Execute statement. If a jump is returned then execution should move
       -- to jump target line.
-      maybeJump <- evalSt st stmt
-      maybe execNextLine jumpToLine maybeJump
+      liftIO $ printStore st
+      liftIO $ putStrLn $ prettyShow cmdline
+      jump <- evalSt st stmt
+      case jump of
+        Jump linum -> jumpToLine 0 linum
+        JumpNext linum -> jumpToLine 1 linum
+        Next -> execNextLine
         where
           -- Recursively execute next line.
           execNextLine :: IOLocoEval ()
           execNextLine = execProg st $ right progZip
-          -- Unpack zipper back to list and search for linenumber.
-          jumpToLine :: Integer -> IOLocoEval ()
-          jumpToLine n = do
+
+          -- Unpack zipper back to list and search for linenumber, optionally
+          -- skipping on @skip@ lines.
+          jumpToLine :: Int -> LineNumber -> IOLocoEval ()
+          jumpToLine skip n = do
             let prog = toList progZip
             case findIndex ((==n) . lineNum) prog of
               Nothing -> (throwError $ InvalidLineError n)
               -- Skip to the jump.
-              Just idx -> execProg st $ zipToIndex progZip idx
+              Just idx -> execProg st $ zipToIndex progZip (idx+skip)
 
 lineNum :: CommandLine -> Integer
 lineNum (CommandLine linum _) = linum
