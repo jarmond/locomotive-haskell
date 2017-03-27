@@ -13,6 +13,8 @@ import Control.Monad.Except
 import Data.List
 import Data.List.Zipper
 
+trace = False
+
 -- |Execute a program with a new store.
 execProgramNewStore :: Program -> IO ()
 execProgramNewStore prog = newStore >>= execProgram prog
@@ -31,8 +33,7 @@ execProg st progZip = liftIO $ unless (endp progZip) $ runIOEval exec
       let cmdline@(CommandLine linum stmt) = cursor progZip
       -- Execute statement. If a jump is returned then execution should move
       -- to jump target line.
-      liftIO $ printStore st
-      liftIO $ putStrLn $ prettyShow cmdline
+      when trace $ liftIO (printStore st >> (putStrLn . prettyShow) cmdline)
       jump <- evalSt st stmt
       case jump of
         Jump linum -> jumpToLine 0 linum
