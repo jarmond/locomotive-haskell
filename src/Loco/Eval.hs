@@ -28,8 +28,8 @@ evalSt st (If expr@(BoolBinary _ _ _) thenSt elseSt) =
 evalSt _ (If _ _ _) = throwError $ TypeError "expected boolean expression for IF"
 evalSt st (While expr@(BoolBinary _ _ _) linum) = while st expr linum
 evalSt _ (While _ _) = throwError $ TypeError "expected boolean expression for WHILE"
-evalSt st (Assign (Variable name _) expr) =
-  eval st expr >>= assign st name >> return Next
+evalSt st (Assign var@(Variable _ _) expr) =
+  eval st expr >>= assign st var >> return Next
 evalSt _ (Assign _ _) = throwError $ TypeError "expected variable for assignment"
 evalSt st (LoopJump _ linum) = return $ Jump linum
 
@@ -48,19 +48,19 @@ while st cond jmp = do
 -- |Execute FOR loop. Sets and updates a variable in store each iteration.
 -- Condition is checked in LoopJump.
 for :: Store -> Statement -> IOLocoEval Jump
-for st forSt@(For (Variable name _) from to maybeStep jmp) = do
-  alreadySet <- liftIO $ isVar st name
+for st forSt@(For loopVar from to maybeStep jmp) = do
+  alreadySet <- liftIO $ isVar st loopVar
   if alreadySet
     -- Variable already set, increment by step and check condition.
-    then do var <- getVar st name
+    then do var <- getVar st loopVar
             stepVal <- step
             var' <- liftIOEval $ locoOp (+) var stepVal
-            setVar st name var'
+            setVar st loopVar var'
             chkCond <- evalBool st $ cond var'
             return $ if chkCond then Next else JumpNext jmp
     -- Set variable to initial 'from' value, and check restart.
     else do fromVal <- eval st from
-            setVar st name fromVal
+            setVar st loopVar fromVal
             for st forSt
   where
     -- Increment value is specified by optional STEP or default of 1.
@@ -75,13 +75,13 @@ ifstmt st expr thenSt elseSt = do
           else maybe (return Next) (evalSt st) elseSt
 
 -- |Assign a variable to store. Type safety is enforced by setvar.
-assign :: Store -> String -> LocoValue -> IOLocoEval ()
-assign st name val = setVar st name val
+assign :: Store -> LocoExpr -> LocoValue -> IOLocoEval ()
+assign st var val = setVar st var val
 
 -- |Evaluate an expression.
 eval :: Store -> LocoExpr -> IOLocoEval LocoValue
 eval _  (Value val)          = return val
-eval st (Variable name _)    = getVar st name
+eval st var@(Variable _ _)    = getVar st var
 eval st (ArithBinary op a b) = aeval st op a b
 eval st (BoolBinary op a b) = beval st op a b
 eval st (Neg expr) = eval st expr >>= liftIOEval . negateExpr
@@ -100,37 +100,40 @@ negateExpr (Real val) = return $ Real (-val)
 negateExpr _ = throwError $ TypeError "cannot negate non-numeric expression"
 
 aeval :: Store -> ABinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue
-aeval st Add a b      = liftBinOp extractValue (locoOp (+)) (eval st a) (eval st b)
-aeval st Subtract a b = liftBinOp extractValue (locoOp (-)) (eval st a) (eval st b)
-aeval st Multiply a b = liftBinOp extractValue (locoOp (*)) (eval st a) (eval st b)
-aeval st Divide a b   = liftBinOp extractValue locoDiv (eval st a) (eval st b)
-aeval st IntDiv a b   = liftBinOp extractValue locoIntDiv (eval st a) (eval st b)
-aeval st Mod a b      = liftBinOp extractValue locoMod (eval st a) (eval st b)
-
--- |Lifts a binary function f into monad n, given an unpacker u for m c.
-liftBinOp :: (Monad m, Monad n) => (m c -> c) -> (a -> b -> m c) -> n a -> n b -> n c
-liftBinOp u f na nb = do
-  a <- na
-  b <- nb
-  return $ u $ f a b
+aeval st Add a b      = join $ (liftIOEval2 $ locoOp (+)) <$> (eval st a) <*> (eval st b)
+aeval st Subtract a b = join $ (liftIOEval2 $ locoOp (-)) <$> (eval st a) <*> (eval st b)
+aeval st Multiply a b = join $ (liftIOEval2 $ locoOp (*)) <$> (eval st a) <*> (eval st b)
+aeval st Divide a b   = join $ (liftIOEval2 $ locoDiv) <$> (eval st a) <*> (eval st b)
+aeval st IntDiv a b   = join $ (liftIOEval2 $ locoIntDiv) <$> (eval st a) <*> (eval st b)
+aeval st Mod a b      = join $ (liftIOEval2 $ locoMod) <$> (eval st a) <*> (eval st b)
 
 locoOp :: (forall a. Num a => a -> a -> a) -> LocoValue -> LocoValue -> LocoEval LocoValue
 locoOp op (Int a) (Int b) = return $ Int (a `op` b)
 locoOp op (Real a) (Real b) = return $ Real (a `op` b)
+locoOp op a@(Real _) b = coerceType LReal b >>= locoOp op a
+locoOp op a b@(Real _) = coerceType LReal a >>= (flip (locoOp op)) a
 locoOp op a b = throwError $ TypeError (show a ++ " op " ++ show b)
 
 locoDiv :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoDiv (Int a) (Int b) = return $ Int (a `div` b)
 locoDiv (Real a) (Real b) = return $ Real (a / b)
+locoDiv a@(Real _) b = coerceType LReal b >>= locoDiv a
+locoDiv a b@(Real _) = coerceType LReal a >>= (flip locoDiv) a
 locoDiv a b = throwError $ TypeError (show a ++ " / " ++ show b)
 
 locoIntDiv :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoIntDiv (Int a) (Int b) = return $ Int (a `div` b)
-locoIntDiv a b = throwError $ TypeError (show a ++ " \\ " ++ show b)
+locoIntDiv a b = do
+  ia <- coerceType LInt a
+  ib <- coerceType LInt b
+  locoIntDiv ia ib
 
 locoMod :: LocoValue -> LocoValue -> LocoEval LocoValue
 locoMod (Int a) (Int b) = return $ Int (a `mod` b)
-locoMod a b = throwError $ TypeError (show a ++ " MOD " ++ show b)
+locoMod a b = do
+  ia <- coerceType LInt a
+  ib <- coerceType LInt b
+  locoMod ia ib
 
 -- |Evaluate a boolean expression to a Bool.
 evalBool :: Store -> LocoExpr -> IOLocoEval Bool
@@ -141,15 +144,15 @@ evalBool st expr = eval st expr >>= bool
     bool _ = throwError $ TypeError "expected boolean expression"
 
 beval :: Store -> BBinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue
-beval st And a b = liftBinOp extractValue (locoBoolOp (&&)) (eval st a) (eval st b)
-beval st Or a b = liftBinOp extractValue (locoBoolOp (||)) (eval st a) (eval st b)
-beval st Xor a b = liftBinOp extractValue (locoBoolOp xor) (eval st a) (eval st b)
-beval st Greater a b = liftBinOp extractValue (locoRelOp (>)) (eval st a) (eval st b)
-beval st Less a b = liftBinOp extractValue (locoRelOp (<)) (eval st a) (eval st b)
-beval st GreaterEq a b = liftBinOp extractValue (locoRelOp (>=)) (eval st a) (eval st b)
-beval st LessEq a b = liftBinOp extractValue (locoRelOp (<=)) (eval st a) (eval st b)
-beval st Equal a b = liftBinOp extractValue (locoRelOp (==)) (eval st a) (eval st b)
-beval st NotEqual a b = liftBinOp extractValue (locoRelOp (/=)) (eval st a) (eval st b)
+beval st And a b = join $ (liftIOEval2 $ locoBoolOp (&&)) <$> (eval st a) <*> (eval st b)
+beval st Or a b = join $ (liftIOEval2 $ locoBoolOp (||)) <$> (eval st a) <*> (eval st b)
+beval st Xor a b = join $ (liftIOEval2 $ locoBoolOp xor) <$> (eval st a) <*> (eval st b)
+beval st Greater a b = join $ (liftIOEval2 $ locoRelOp (>)) <$> (eval st a) <*> (eval st b)
+beval st Less a b = join $ (liftIOEval2 $ locoRelOp (<)) <$> (eval st a) <*> (eval st b)
+beval st GreaterEq a b = join $ (liftIOEval2 $ locoRelOp (>=)) <$> (eval st a) <*> (eval st b)
+beval st LessEq a b = join $ (liftIOEval2 $ locoRelOp (<=)) <$> (eval st a) <*> (eval st b)
+beval st Equal a b = join $ (liftIOEval2 $ locoRelOp (==)) <$> (eval st a) <*> (eval st b)
+beval st NotEqual a b = join $ (liftIOEval2 $ locoRelOp (/=)) <$> (eval st a) <*> (eval st b)
 
 xor True False = True
 xor False True = True

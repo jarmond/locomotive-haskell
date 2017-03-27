@@ -28,7 +28,11 @@ trapError :: IOLocoEval () -> IOLocoEval ()
 trapError action = catchError action $ (liftIO . putStrLn . show)
 
 runIOEval :: IOLocoEval () -> IO ()
-runIOEval action = runExceptT (trapError action) >>= return . extractValue
+runIOEval action = runExceptT (trapError action) >>= printError
+
+printError :: LocoEval a -> IO ()
+printError (Left err) = print err
+printError (Right _) = return ()
 
 extractValue :: LocoEval a -> a
 extractValue (Right val) = val
@@ -36,3 +40,9 @@ extractValue (Right val) = val
 liftIOEval :: LocoEval a -> IOLocoEval a
 liftIOEval (Left err) = throwError err
 liftIOEval (Right val) = return val
+
+liftIOEval1 :: (a -> LocoEval r) -> a -> IOLocoEval r
+liftIOEval1 f = liftIOEval . f
+
+liftIOEval2 :: (a1 -> a2 -> LocoEval r) -> a1 -> a2 -> IOLocoEval r
+liftIOEval2 f a b = liftIOEval $ f a b

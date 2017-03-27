@@ -15,32 +15,31 @@ type Store = IORef [(String, IORef LocoValue)]
 newStore :: IO Store
 newStore = newIORef []
 
-isVar :: Store -> String -> IO Bool
-isVar storeRef name = readIORef storeRef >>= return . isJust . lookup name
+isVar :: Store -> LocoExpr -> IO Bool
+isVar storeRef (Variable name _) = readIORef storeRef >>= return . isJust . lookup name
 
 -- |Retrieve variable from store.
-getVar :: Store -> String -> IOLocoEval LocoValue
-getVar storeRef name = do
+getVar :: Store -> LocoExpr -> IOLocoEval LocoValue
+getVar storeRef (Variable name _) = do
   store <- liftIO $ readIORef storeRef
   maybe (throwError $ UndeclaredVarError name)
         (liftIO . readIORef)
         (lookup name store)
 
--- |Sets a variable in store. Variables preceded by '_' are internal to the
--- interpreter and not allowed as user variables.
-setVar :: Store -> String -> LocoValue -> IOLocoEval ()
-setVar storeRef name val = do
+-- |Sets a variable in store.
+setVar :: Store -> LocoExpr -> LocoValue -> IOLocoEval ()
+setVar storeRef (Variable name varType) val = do
   store <- liftIO $ readIORef storeRef
-  valRef <- liftIO $ newIORef val
+  -- Try to coerce type if possible.
+  val' <- liftIOEval $ coerceType varType val
   case (lookup name store) of
     -- New variable, store it.
-    Nothing -> liftIO $ writeIORef storeRef ((name, valRef) : store)
-    -- Existing variable, check types match, then store it.
+    Nothing -> do
+      valRef <- liftIO $ newIORef val'
+      liftIO $ writeIORef storeRef ((name, valRef) : store)
+    -- Existing variable, store it.
     Just curRef -> do
-      cur <- liftIO $ readIORef curRef
-      if matchedTypes cur val
-        then liftIO $ writeIORef curRef val
-        else throwError $ TypeError "in assignment"
+      liftIO $ writeIORef curRef val'
 
 printStore :: Store -> IO ()
 printStore storeRef = do
@@ -63,3 +62,13 @@ matchedVarType (Variable _ LReal) (Real _)     = True
 matchedVarType (Variable _ LString) (String _) = True
 matchedVarType (Variable _ _) _                = False
 matchedVarType _ _ = error "cannot match types for non-variable expression"
+
+coerceType :: LocoType -> LocoValue -> LocoEval LocoValue
+coerceType LInt val@(Int _) = return val
+coerceType LInt (Real val) = return $ Int $ truncate val
+coerceType LInt val = throwError $ TypeError $ "cannot coerce " ++ show val ++ " to integer"
+coerceType LReal val@(Real _) = return val
+coerceType LReal (Int val) = return $ Real $ fromIntegral val
+coerceType LReal val = throwError $ TypeError $ "cannot coerce " ++ show val ++ " to real"
+coerceType LString val@(String _) = return val
+coerceType LString val = throwError $ TypeError $ "cannot coerce " ++ show val ++ " to string"
