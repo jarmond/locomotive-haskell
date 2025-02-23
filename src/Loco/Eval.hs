@@ -100,12 +100,16 @@ negateExpr (Real val) = return $ Real (-val)
 negateExpr _ = throwError $ TypeError "cannot negate non-numeric expression"
 
 aeval :: Store -> ABinOp -> LocoExpr -> LocoExpr -> IOLocoEval LocoValue
-aeval st Add a b      = join $ (liftIOEval2 $ locoOp (+)) <$> (eval st a) <*> (eval st b)
-aeval st Subtract a b = join $ (liftIOEval2 $ locoOp (-)) <$> (eval st a) <*> (eval st b)
-aeval st Multiply a b = join $ (liftIOEval2 $ locoOp (*)) <$> (eval st a) <*> (eval st b)
-aeval st Divide a b   = join $ (liftIOEval2 $ locoDiv) <$> (eval st a) <*> (eval st b)
-aeval st IntDiv a b   = join $ (liftIOEval2 $ locoIntDiv) <$> (eval st a) <*> (eval st b)
-aeval st Mod a b      = join $ (liftIOEval2 $ locoMod) <$> (eval st a) <*> (eval st b)
+aeval st op a b = go op
+  where
+    go Add      = apply $ locoOp (+)
+    go Subtract = apply $ locoOp (-)
+    go Multiply = apply $ locoOp (*)
+    go Divide   = apply $ locoDiv
+    go IntDiv   = apply $ locoIntDiv
+    go Mod      = apply $ locoMod
+
+    apply fn = join $ (liftIOEval2 $ fn) <$> (eval st a) <*> (eval st b)
 
 locoOp :: (forall a. Num a => a -> a -> a) -> LocoValue -> LocoValue -> LocoEval LocoValue
 locoOp op (Int a) (Int b) = return $ Int (a `op` b)
